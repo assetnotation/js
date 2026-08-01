@@ -1,0 +1,100 @@
+{
+	"assetnotation": "0.3.0",
+	"generatedAt": "2026-06-24T20:00:00Z",
+	"generator": { "name": "example", "version": "1.0.0" },
+	"baseCurrency": "EUR",
+	"subjects": [{ "id": "s1", "type": "person", "name": "A. Doe", "country": "FR" }],
+	"institutions": [
+		{ "id": "i1", "name": "Example Bank", "kind": "bank", "ids": { "bic": "EXAMFRPPXXX" } },
+		{ "id": "i2", "name": "Example Broker", "kind": "broker" }
+	],
+	"holdings": [
+		{
+			"id": "h1",
+			"label": "Current account",
+			"kind": "checking",
+			"nature": "asset",
+			"currency": "EUR",
+			"institutionId": "i1",
+			"ids": { "iban": "FR76 XXXX XXXX XX" }
+		},
+		{
+			"id": "h2",
+			"label": "World ETF",
+			"kind": "brokerage",
+			"nature": "asset",
+			"currency": "EUR",
+			"institutionId": "i2",
+			"instrumentId": "n1",
+			"quantity": "40"
+		},
+		{
+			"id": "h3",
+			"label": "12 Main St",
+			"kind": "real_estate",
+			"nature": "asset",
+			"currency": "EUR",
+			"links": [{ "rel": "financed_by", "holdingId": "h4" }]
+		},
+		{
+			"id": "h4",
+			"label": "Mortgage",
+			"kind": "mortgage",
+			"nature": "liability",
+			"currency": "EUR",
+			"institutionId": "i1",
+			"attributes": {
+				"rate": 1.8,
+				"startDate": "2022-01-01",
+				"endDate": "2042-01-01",
+				"payment": "990.00"
+			}
+		}
+	],
+	"instruments": [
+		{
+			"id": "n1",
+			"name": "World ETF",
+			"kind": "security",
+			"ids": { "isin": "IE00B4L5Y983" },
+			"currency": "EUR"
+		}
+	],
+	"valuations": [
+		{
+			"id": "v1",
+			"holdingId": "h1",
+			"asOf": "2026-06-24",
+			"value": { "amount": "4210.55", "currency": "EUR" },
+			"source": "statement"
+		},
+		{
+			"id": "v2",
+			"holdingId": "h2",
+			"asOf": "2026-06-24",
+			"value": { "amount": "4920.00", "currency": "EUR" },
+			"unitPrice": { "amount": "123.00", "currency": "EUR" },
+			"source": "market"
+		},
+		{
+			"id": "v3",
+			"holdingId": "h3",
+			"asOf": "2026-06-01",
+			"value": { "amount": "300000.00", "currency": "EUR" },
+			"source": "estimate",
+			"confidence": 0.5
+		},
+		{
+			"id": "v4",
+			"holdingId": "h4",
+			"asOf": "2026-06-24",
+			"value": { "amount": "176400.00", "currency": "EUR" },
+			"source": "statement"
+		}
+	],
+	"ownership": [
+		{ "subjectId": "s1", "holdingId": "h1", "share": "1" },
+		{ "subjectId": "s1", "holdingId": "h3", "share": "1" },
+		{ "subjectId": "s1", "holdingId": "h4", "share": "1" }
+	]
+}

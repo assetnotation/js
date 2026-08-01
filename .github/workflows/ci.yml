@@ -1,0 +1,40 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run gate
+
+  schema-drift:
+    # The schemas are copied in so validation works offline, and a copy drifts.
+    # This fails the day the specification moves and this package does not,
+    # which is the one way a reference implementation quietly becomes wrong.
+    name: schemas match the specification
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch the specification
+        run: git clone --depth 1 https://github.com/assetnotation/spec.git /tmp/spec
+      - name: Compare schemas and examples
+        run: |
+          diff -r schema /tmp/spec/schema
+          diff -r examples /tmp/spec/examples

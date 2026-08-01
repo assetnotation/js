@@ -1,0 +1,100 @@
+{
+	"assetnotation": "0.3.0",
+	"generatedAt": "2026-07-08T09:00:00Z",
+	"generator": { "name": "example", "version": "1.0.0" },
+	"baseCurrency": "EUR",
+	"subjects": [{ "id": "s1", "type": "person", "name": "A. Doe", "country": "FR" }],
+	"institutions": [{ "id": "i1", "name": "Example Broker", "kind": "broker" }],
+	"holdings": [
+		{
+			"id": "h1",
+			"label": "Securities account",
+			"kind": "brokerage",
+			"nature": "asset",
+			"currency": "EUR",
+			"institutionId": "i1"
+		},
+		{
+			"id": "h2",
+			"label": "Settlement cash",
+			"kind": "cash",
+			"nature": "asset",
+			"currency": "EUR",
+			"institutionId": "i1",
+			"links": [{ "rel": "cash_of", "holdingId": "h1" }]
+		},
+		{
+			"id": "h3",
+			"label": "US Tech Corp",
+			"kind": "brokerage",
+			"nature": "asset",
+			"currency": "USD",
+			"parentId": "h1",
+			"instrumentId": "n1",
+			"quantity": "20",
+			"costBasis": { "amount": "1650.07", "currency": "EUR" }
+		}
+	],
+	"instruments": [
+		{
+			"id": "n1",
+			"name": "US Tech Corp",
+			"kind": "security",
+			"ids": { "isin": "US0000000000", "ticker": "TECH", "mic": "XNAS" },
+			"currency": "USD"
+		}
+	],
+	"valuations": [
+		{
+			"id": "v1",
+			"holdingId": "h2",
+			"asOf": "2026-07-08",
+			"value": { "amount": "350.00", "currency": "EUR" },
+			"source": "statement"
+		},
+		{
+			"id": "v2",
+			"holdingId": "h3",
+			"asOf": "2026-07-08",
+			"value": { "amount": "1840.00", "currency": "USD" },
+			"unitPrice": { "amount": "92.00", "currency": "USD" },
+			"quantity": "20",
+			"source": "market",
+			"fx": { "base": "EUR", "rate": "0.9210" }
+		}
+	],
+	"transactions": [
+		{
+			"id": "t1",
+			"holdingId": "h3",
+			"date": "2026-03-02T15:30:00Z",
+			"amount": { "amount": "1792.00", "currency": "USD" },
+			"type": "trade",
+			"description": "Buy 10 TECH at 179.20 USD",
+			"instrumentId": "n1",
+			"quantity": "10",
+			"counterpartHoldingId": "h2",
+			"transferId": "x1",
+			"fx": { "base": "EUR", "rate": "0.9208" }
+		},
+		{
+			"id": "t2",
+			"holdingId": "h2",
+			"date": "2026-03-02T15:30:00Z",
+			"amount": { "amount": "-1650.07", "currency": "EUR" },
+			"type": "trade",
+			"description": "Settlement of buy 10 TECH",
+			"counterpartHoldingId": "h3",
+			"transferId": "x1"
+		},
+		{
+			"id": "t3",
+			"holdingId": "h3",
+			"date": "2026-06-16",
+			"type": "corporate_action",
+			"factor": "2",
+			"description": "2-for-1 stock split",
+			"instrumentId": "n1"
+		}
+	]
+}

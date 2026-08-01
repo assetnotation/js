@@ -1,0 +1,66 @@
+{
+	"name": "asset-notation",
+	"version": "0.1.0",
+	"description": "Reference implementation of the Asset Notation format: validate a document, and convert to and from the spreadsheets people already keep.",
+	"keywords": [
+		"asset-notation",
+		"open-standard",
+		"json-schema",
+		"personal-finance",
+		"net-worth",
+		"csv",
+		"validator"
+	],
+	"license": "Apache-2.0",
+	"author": "Florian Mousseau",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/assetnotation/js.git"
+	},
+	"homepage": "https://github.com/assetnotation/spec",
+	"type": "module",
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
+		}
+	},
+	"bin": {
+		"asset-notation": "./dist/cli.js"
+	},
+	"files": [
+		"dist",
+		"schema",
+		"LICENSE",
+		"README.md"
+	],
+	"engines": {
+		"node": ">=20"
+	},
+	"scripts": {
+		"build": "tsup && tsc -p tsconfig.build.json",
+		"typecheck": "tsc --noEmit",
+		"test": "vitest run",
+		"format": "prettier --write .",
+		"format:check": "prettier --check .",
+		"lint": "eslint . --max-warnings 0",
+		"gate": "npm run format:check && npm run lint && npm run typecheck && npm run test && npm run build",
+		"prepublishOnly": "npm run gate"
+	},
+	"dependencies": {
+		"ajv": "^8.20.0",
+		"ajv-formats": "^3.0.1"
+	},
+	"devDependencies": {
+		"@eslint/js": "^10.0.1",
+		"@types/node": "^26.1.2",
+		"eslint": "^10.8.0",
+		"prettier": "^3.9.6",
+		"tsup": "^8.5.1",
+		"typescript": "^6.0.3",
+		"typescript-eslint": "^8.65.0",
+		"vitest": "^4.1.10"
+	}
+}
