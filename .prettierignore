@@ -1,0 +1,6 @@
+# Verbatim copies of the specification. Reformatting them makes this package
+# disagree with the normative artefact, which the drift check then reports as
+# a schema change - it caught exactly that on the first run.
+schema/
+examples/
+dist/

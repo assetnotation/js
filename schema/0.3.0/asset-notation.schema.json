@@ -1,300 +1,303 @@
 {
-	"$schema": "https://json-schema.org/draft/2020-12/schema",
-	"$id": "https://assetnotation.org/schema/0.3.0/asset-notation.schema.json",
-	"title": "Asset Notation Document",
-	"description": "Schema for an Asset Notation v0.3.0 document. See versions/0.3.0.md for the normative specification.",
-	"type": "object",
-	"required": ["assetnotation", "generatedAt", "holdings"],
-	"properties": {
-		"assetnotation": {
-			"description": "Spec version major.minor.patch. Compatibility is keyed on major.minor.",
-			"type": "string",
-			"pattern": "^[0-9]+\\.[0-9]+(\\.[0-9]+)?$"
-		},
-		"generatedAt": {
-			"description": "When the document was produced (RFC 3339 timestamp).",
-			"type": "string",
-			"format": "date-time"
-		},
-		"generator": {
-			"type": "object",
-			"properties": {
-				"name": { "type": "string" },
-				"version": { "type": "string" }
-			}
-		},
-		"baseCurrency": { "$ref": "#/$defs/currencyCode" },
-		"subjects": { "type": "array", "items": { "$ref": "#/$defs/subject" } },
-		"institutions": { "type": "array", "items": { "$ref": "#/$defs/institution" } },
-		"holdings": { "type": "array", "items": { "$ref": "#/$defs/holding" } },
-		"instruments": { "type": "array", "items": { "$ref": "#/$defs/instrument" } },
-		"valuations": { "type": "array", "items": { "$ref": "#/$defs/valuation" } },
-		"transactions": { "type": "array", "items": { "$ref": "#/$defs/transaction" } },
-		"ownership": { "type": "array", "items": { "$ref": "#/$defs/ownership" } },
-		"extensions": {
-			"description": "Namespaced app-specific data, keyed by reverse-DNS or app id.",
-			"type": "object"
-		}
-	},
-	"additionalProperties": true,
-	"$defs": {
-		"currencyCode": {
-			"description": "ISO 4217 alphabetic code.",
-			"type": "string",
-			"pattern": "^[A-Z]{3}$"
-		},
-		"countryCode": {
-			"description": "ISO 3166-1 alpha-2 code.",
-			"type": "string",
-			"pattern": "^[A-Z]{2}$"
-		},
-		"date": {
-			"description": "ISO 8601 calendar date YYYY-MM-DD.",
-			"type": "string",
-			"pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
-		},
-		"dateOrTimestamp": {
-			"description": "An ISO 8601 date or an RFC 3339 timestamp.",
-			"type": "string",
-			"anyOf": [{ "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" }, { "format": "date-time" }]
-		},
-		"decimalString": {
-			"description": "Base-10 decimal string. Never a float.",
-			"type": "string",
-			"pattern": "^-?[0-9]+(\\.[0-9]+)?$"
-		},
-		"shareString": {
-			"description": "Ownership share in [0, 1] as a base-10 decimal string, e.g. \"0.5\".",
-			"type": "string",
-			"pattern": "^(0(\\.[0-9]+)?|1(\\.0+)?)$"
-		},
-		"ref": {
-			"description": "A reference to another entity's id.",
-			"type": "string",
-			"minLength": 1
-		},
-		"bic": {
-			"description": "ISO 9362 BIC: 8 or 11 characters.",
-			"type": "string",
-			"pattern": "^[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}([A-Z0-9]{3})?$"
-		},
-		"isin": {
-			"description": "ISO 6166 ISIN.",
-			"type": "string",
-			"pattern": "^[A-Z]{2}[A-Z0-9]{9}[0-9]$"
-		},
-		"lei": {
-			"description": "ISO 17442 LEI.",
-			"type": "string",
-			"pattern": "^[A-Z0-9]{18}[0-9]{2}$"
-		},
-		"mic": {
-			"description": "ISO 10383 market identifier code.",
-			"type": "string",
-			"pattern": "^[A-Z0-9]{4}$"
-		},
-		"money": {
-			"type": "object",
-			"required": ["amount", "currency"],
-			"properties": {
-				"amount": { "$ref": "#/$defs/decimalString" },
-				"currency": { "$ref": "#/$defs/currencyCode" }
-			},
-			"additionalProperties": false
-		},
-		"fxRate": {
-			"description": "A conversion rate captured when the record was made: one unit of the record's currency equals `rate` units of `base`.",
-			"type": "object",
-			"required": ["base", "rate"],
-			"properties": {
-				"base": { "$ref": "#/$defs/currencyCode" },
-				"rate": { "$ref": "#/$defs/decimalString" }
-			},
-			"additionalProperties": false
-		},
-		"link": {
-			"description": "A relation from one holding to another.",
-			"type": "object",
-			"required": ["rel", "holdingId"],
-			"properties": {
-				"rel": { "type": "string", "minLength": 1 },
-				"holdingId": { "$ref": "#/$defs/ref" }
-			},
-			"additionalProperties": true
-		},
-		"subject": {
-			"type": "object",
-			"required": ["id", "type"],
-			"properties": {
-				"id": { "type": "string", "minLength": 1 },
-				"type": { "type": "string", "enum": ["person", "entity"] },
-				"name": { "type": "string" },
-				"kind": { "type": "string" },
-				"country": { "$ref": "#/$defs/countryCode" },
-				"ids": {
-					"type": "object",
-					"properties": {
-						"lei": { "$ref": "#/$defs/lei" }
-					},
-					"additionalProperties": true
-				}
-			},
-			"additionalProperties": true
-		},
-		"institution": {
-			"type": "object",
-			"required": ["id"],
-			"properties": {
-				"id": { "type": "string", "minLength": 1 },
-				"name": { "type": "string" },
-				"kind": {
-					"description": "Open vocabulary. Recommended: bank, broker, insurer, exchange, custodian, other. Consumers MUST accept an unknown kind.",
-					"type": "string",
-					"minLength": 1
-				},
-				"country": { "$ref": "#/$defs/countryCode" },
-				"ids": {
-					"type": "object",
-					"properties": {
-						"bic": { "$ref": "#/$defs/bic" },
-						"lei": { "$ref": "#/$defs/lei" }
-					},
-					"additionalProperties": true
-				}
-			},
-			"additionalProperties": true
-		},
-		"holding": {
-			"type": "object",
-			"required": ["id", "kind", "nature"],
-			"properties": {
-				"id": { "type": "string", "minLength": 1 },
-				"kind": {
-					"description": "Open vocabulary. Consumers MUST accept an unknown kind.",
-					"type": "string",
-					"minLength": 1
-				},
-				"nature": { "type": "string", "enum": ["asset", "liability"] },
-				"label": { "type": "string" },
-				"currency": { "$ref": "#/$defs/currencyCode" },
-				"parentId": { "$ref": "#/$defs/ref" },
-				"institutionId": { "$ref": "#/$defs/ref" },
-				"ids": {
-					"type": "object",
-					"properties": {
-						"iban": { "description": "MAY be masked or partially redacted.", "type": "string" },
-						"bic": { "$ref": "#/$defs/bic" },
-						"number": { "description": "SHOULD be masked.", "type": "string" }
-					},
-					"additionalProperties": true
-				},
-				"instrumentId": { "$ref": "#/$defs/ref" },
-				"quantity": { "$ref": "#/$defs/decimalString" },
-				"costBasis": { "$ref": "#/$defs/money" },
-				"links": { "type": "array", "items": { "$ref": "#/$defs/link" } },
-				"attributes": { "type": "object" },
-				"openedAt": { "$ref": "#/$defs/date" },
-				"closedAt": { "$ref": "#/$defs/date" }
-			},
-			"additionalProperties": true
-		},
-		"instrument": {
-			"type": "object",
-			"required": ["id", "kind"],
-			"properties": {
-				"id": { "type": "string", "minLength": 1 },
-				"name": { "type": "string" },
-				"kind": {
-					"description": "Open vocabulary. Recommended: security, cash, crypto, commodity, other. Consumers MUST accept an unknown kind.",
-					"type": "string",
-					"minLength": 1
-				},
-				"ids": {
-					"type": "object",
-					"properties": {
-						"isin": { "$ref": "#/$defs/isin" },
-						"mic": { "$ref": "#/$defs/mic" },
-						"figi": { "type": "string" },
-						"ticker": { "type": "string" }
-					},
-					"additionalProperties": true
-				},
-				"currency": { "$ref": "#/$defs/currencyCode" }
-			},
-			"additionalProperties": true
-		},
-		"valuation": {
-			"type": "object",
-			"required": ["id", "holdingId", "asOf", "value"],
-			"properties": {
-				"id": { "type": "string", "minLength": 1 },
-				"holdingId": { "$ref": "#/$defs/ref" },
-				"asOf": { "$ref": "#/$defs/dateOrTimestamp" },
-				"value": { "$ref": "#/$defs/money" },
-				"unitPrice": { "$ref": "#/$defs/money" },
-				"quantity": {
-					"description": "Units held as of asOf, making the valuation a position snapshot.",
-					"$ref": "#/$defs/decimalString"
-				},
-				"fx": { "$ref": "#/$defs/fxRate" },
-				"source": {
-					"description": "Open vocabulary. Consumers MUST accept an unknown source.",
-					"type": "string"
-				},
-				"confidence": { "type": "number", "minimum": 0, "maximum": 1 }
-			},
-			"additionalProperties": true
-		},
-		"transaction": {
-			"type": "object",
-			"required": ["id", "holdingId", "date"],
-			"properties": {
-				"id": { "type": "string", "minLength": 1 },
-				"holdingId": { "$ref": "#/$defs/ref" },
-				"date": { "$ref": "#/$defs/dateOrTimestamp" },
-				"amount": { "$ref": "#/$defs/money" },
-				"type": {
-					"description": "Open vocabulary. Recommended: transfer, trade, fee, dividend, interest, income, expense, corporate_action, other. Consumers MUST accept an unknown type.",
-					"type": "string",
-					"minLength": 1
-				},
-				"factor": {
-					"description": "Quantity multiplier applied by a corporate action: 2 for a 2-for-1 split, 0.5 for a reverse split, an exchange ratio for a merger.",
-					"$ref": "#/$defs/decimalString"
-				},
-				"fx": { "$ref": "#/$defs/fxRate" },
-				"transferId": {
-					"description": "Opaque id shared by the legs of one internal movement of value (a transfer's debit and credit, a trade and its cash settlement). Legs SHOULD net to zero.",
-					"type": "string",
-					"minLength": 1
-				},
-				"description": { "type": "string" },
-				"category": { "type": "string" },
-				"counterpartHoldingId": { "$ref": "#/$defs/ref" },
-				"instrumentId": { "$ref": "#/$defs/ref" },
-				"quantity": { "$ref": "#/$defs/decimalString" }
-			},
-			"allOf": [
-				{
-					"if": {
-						"properties": { "type": { "const": "corporate_action" } },
-						"required": ["type"]
-					},
-					"then": { "required": ["factor"] },
-					"else": { "required": ["amount"] }
-				}
-			],
-			"additionalProperties": true
-		},
-		"ownership": {
-			"type": "object",
-			"required": ["subjectId", "holdingId", "share"],
-			"properties": {
-				"subjectId": { "$ref": "#/$defs/ref" },
-				"holdingId": { "$ref": "#/$defs/ref" },
-				"share": { "$ref": "#/$defs/shareString" }
-			},
-			"additionalProperties": true
-		}
-	}
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://assetnotation.org/schema/0.3.0/asset-notation.schema.json",
+  "title": "Asset Notation Document",
+  "description": "Schema for an Asset Notation v0.3.0 document. See versions/0.3.0.md for the normative specification.",
+  "type": "object",
+  "required": ["assetnotation", "generatedAt", "holdings"],
+  "properties": {
+    "assetnotation": {
+      "description": "Spec version major.minor.patch. Compatibility is keyed on major.minor.",
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+(\\.[0-9]+)?$"
+    },
+    "generatedAt": {
+      "description": "When the document was produced (RFC 3339 timestamp).",
+      "type": "string",
+      "format": "date-time"
+    },
+    "generator": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "version": { "type": "string" }
+      }
+    },
+    "baseCurrency": { "$ref": "#/$defs/currencyCode" },
+    "subjects": { "type": "array", "items": { "$ref": "#/$defs/subject" } },
+    "institutions": { "type": "array", "items": { "$ref": "#/$defs/institution" } },
+    "holdings": { "type": "array", "items": { "$ref": "#/$defs/holding" } },
+    "instruments": { "type": "array", "items": { "$ref": "#/$defs/instrument" } },
+    "valuations": { "type": "array", "items": { "$ref": "#/$defs/valuation" } },
+    "transactions": { "type": "array", "items": { "$ref": "#/$defs/transaction" } },
+    "ownership": { "type": "array", "items": { "$ref": "#/$defs/ownership" } },
+    "extensions": {
+      "description": "Namespaced app-specific data, keyed by reverse-DNS or app id.",
+      "type": "object"
+    }
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "currencyCode": {
+      "description": "ISO 4217 alphabetic code.",
+      "type": "string",
+      "pattern": "^[A-Z]{3}$"
+    },
+    "countryCode": {
+      "description": "ISO 3166-1 alpha-2 code.",
+      "type": "string",
+      "pattern": "^[A-Z]{2}$"
+    },
+    "date": {
+      "description": "ISO 8601 calendar date YYYY-MM-DD.",
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+    },
+    "dateOrTimestamp": {
+      "description": "An ISO 8601 date or an RFC 3339 timestamp.",
+      "type": "string",
+      "anyOf": [
+        { "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+        { "format": "date-time" }
+      ]
+    },
+    "decimalString": {
+      "description": "Base-10 decimal string. Never a float.",
+      "type": "string",
+      "pattern": "^-?[0-9]+(\\.[0-9]+)?$"
+    },
+    "shareString": {
+      "description": "Ownership share in [0, 1] as a base-10 decimal string, e.g. \"0.5\".",
+      "type": "string",
+      "pattern": "^(0(\\.[0-9]+)?|1(\\.0+)?)$"
+    },
+    "ref": {
+      "description": "A reference to another entity's id.",
+      "type": "string",
+      "minLength": 1
+    },
+    "bic": {
+      "description": "ISO 9362 BIC: 8 or 11 characters.",
+      "type": "string",
+      "pattern": "^[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}([A-Z0-9]{3})?$"
+    },
+    "isin": {
+      "description": "ISO 6166 ISIN.",
+      "type": "string",
+      "pattern": "^[A-Z]{2}[A-Z0-9]{9}[0-9]$"
+    },
+    "lei": {
+      "description": "ISO 17442 LEI.",
+      "type": "string",
+      "pattern": "^[A-Z0-9]{18}[0-9]{2}$"
+    },
+    "mic": {
+      "description": "ISO 10383 market identifier code.",
+      "type": "string",
+      "pattern": "^[A-Z0-9]{4}$"
+    },
+    "money": {
+      "type": "object",
+      "required": ["amount", "currency"],
+      "properties": {
+        "amount": { "$ref": "#/$defs/decimalString" },
+        "currency": { "$ref": "#/$defs/currencyCode" }
+      },
+      "additionalProperties": false
+    },
+    "fxRate": {
+      "description": "A conversion rate captured when the record was made: one unit of the record's currency equals `rate` units of `base`.",
+      "type": "object",
+      "required": ["base", "rate"],
+      "properties": {
+        "base": { "$ref": "#/$defs/currencyCode" },
+        "rate": { "$ref": "#/$defs/decimalString" }
+      },
+      "additionalProperties": false
+    },
+    "link": {
+      "description": "A relation from one holding to another.",
+      "type": "object",
+      "required": ["rel", "holdingId"],
+      "properties": {
+        "rel": { "type": "string", "minLength": 1 },
+        "holdingId": { "$ref": "#/$defs/ref" }
+      },
+      "additionalProperties": true
+    },
+    "subject": {
+      "type": "object",
+      "required": ["id", "type"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "type": { "type": "string", "enum": ["person", "entity"] },
+        "name": { "type": "string" },
+        "kind": { "type": "string" },
+        "country": { "$ref": "#/$defs/countryCode" },
+        "ids": {
+          "type": "object",
+          "properties": {
+            "lei": { "$ref": "#/$defs/lei" }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
+    "institution": {
+      "type": "object",
+      "required": ["id"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "name": { "type": "string" },
+        "kind": {
+          "description": "Open vocabulary. Recommended: bank, broker, insurer, exchange, custodian, other. Consumers MUST accept an unknown kind.",
+          "type": "string",
+          "minLength": 1
+        },
+        "country": { "$ref": "#/$defs/countryCode" },
+        "ids": {
+          "type": "object",
+          "properties": {
+            "bic": { "$ref": "#/$defs/bic" },
+            "lei": { "$ref": "#/$defs/lei" }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
+    "holding": {
+      "type": "object",
+      "required": ["id", "kind", "nature"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "kind": {
+          "description": "Open vocabulary. Consumers MUST accept an unknown kind.",
+          "type": "string",
+          "minLength": 1
+        },
+        "nature": { "type": "string", "enum": ["asset", "liability"] },
+        "label": { "type": "string" },
+        "currency": { "$ref": "#/$defs/currencyCode" },
+        "parentId": { "$ref": "#/$defs/ref" },
+        "institutionId": { "$ref": "#/$defs/ref" },
+        "ids": {
+          "type": "object",
+          "properties": {
+            "iban": { "description": "MAY be masked or partially redacted.", "type": "string" },
+            "bic": { "$ref": "#/$defs/bic" },
+            "number": { "description": "SHOULD be masked.", "type": "string" }
+          },
+          "additionalProperties": true
+        },
+        "instrumentId": { "$ref": "#/$defs/ref" },
+        "quantity": { "$ref": "#/$defs/decimalString" },
+        "costBasis": { "$ref": "#/$defs/money" },
+        "links": { "type": "array", "items": { "$ref": "#/$defs/link" } },
+        "attributes": { "type": "object" },
+        "openedAt": { "$ref": "#/$defs/date" },
+        "closedAt": { "$ref": "#/$defs/date" }
+      },
+      "additionalProperties": true
+    },
+    "instrument": {
+      "type": "object",
+      "required": ["id", "kind"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "name": { "type": "string" },
+        "kind": {
+          "description": "Open vocabulary. Recommended: security, cash, crypto, commodity, other. Consumers MUST accept an unknown kind.",
+          "type": "string",
+          "minLength": 1
+        },
+        "ids": {
+          "type": "object",
+          "properties": {
+            "isin": { "$ref": "#/$defs/isin" },
+            "mic": { "$ref": "#/$defs/mic" },
+            "figi": { "type": "string" },
+            "ticker": { "type": "string" }
+          },
+          "additionalProperties": true
+        },
+        "currency": { "$ref": "#/$defs/currencyCode" }
+      },
+      "additionalProperties": true
+    },
+    "valuation": {
+      "type": "object",
+      "required": ["id", "holdingId", "asOf", "value"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "holdingId": { "$ref": "#/$defs/ref" },
+        "asOf": { "$ref": "#/$defs/dateOrTimestamp" },
+        "value": { "$ref": "#/$defs/money" },
+        "unitPrice": { "$ref": "#/$defs/money" },
+        "quantity": {
+          "description": "Units held as of asOf, making the valuation a position snapshot.",
+          "$ref": "#/$defs/decimalString"
+        },
+        "fx": { "$ref": "#/$defs/fxRate" },
+        "source": {
+          "description": "Open vocabulary. Consumers MUST accept an unknown source.",
+          "type": "string"
+        },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+      },
+      "additionalProperties": true
+    },
+    "transaction": {
+      "type": "object",
+      "required": ["id", "holdingId", "date"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "holdingId": { "$ref": "#/$defs/ref" },
+        "date": { "$ref": "#/$defs/dateOrTimestamp" },
+        "amount": { "$ref": "#/$defs/money" },
+        "type": {
+          "description": "Open vocabulary. Recommended: transfer, trade, fee, dividend, interest, income, expense, corporate_action, other. Consumers MUST accept an unknown type.",
+          "type": "string",
+          "minLength": 1
+        },
+        "factor": {
+          "description": "Quantity multiplier applied by a corporate action: 2 for a 2-for-1 split, 0.5 for a reverse split, an exchange ratio for a merger.",
+          "$ref": "#/$defs/decimalString"
+        },
+        "fx": { "$ref": "#/$defs/fxRate" },
+        "transferId": {
+          "description": "Opaque id shared by the legs of one internal movement of value (a transfer's debit and credit, a trade and its cash settlement). Legs SHOULD net to zero.",
+          "type": "string",
+          "minLength": 1
+        },
+        "description": { "type": "string" },
+        "category": { "type": "string" },
+        "counterpartHoldingId": { "$ref": "#/$defs/ref" },
+        "instrumentId": { "$ref": "#/$defs/ref" },
+        "quantity": { "$ref": "#/$defs/decimalString" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "type": { "const": "corporate_action" } },
+            "required": ["type"]
+          },
+          "then": { "required": ["factor"] },
+          "else": { "required": ["amount"] }
+        }
+      ],
+      "additionalProperties": true
+    },
+    "ownership": {
+      "type": "object",
+      "required": ["subjectId", "holdingId", "share"],
+      "properties": {
+        "subjectId": { "$ref": "#/$defs/ref" },
+        "holdingId": { "$ref": "#/$defs/ref" },
+        "share": { "$ref": "#/$defs/shareString" }
+      },
+      "additionalProperties": true
+    }
+  }
 }
