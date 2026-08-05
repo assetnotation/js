@@ -7,6 +7,15 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    # typescript 7 is held back on purpose, not forgotten. typescript-eslint
+    # 8.66.0 - the latest - still declares 	ypescript >=4.8.4 <6.1.0, so a TS 7
+    # bump cannot install: npm fails with ERESOLVE before a single check runs.
+    # Remove this block the day typescript-eslint accepts 7, and let the bump
+    # come through. TS 8 is deliberately NOT ignored.
+    ignore:
+      - dependency-name: typescript
+        versions:
+          - 7.x
     groups:
       npm-minor-patch:
         update-types:
@@ -17,6 +26,15 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    # typescript 7 is held back on purpose, not forgotten. typescript-eslint
+    # 8.66.0 - the latest - still declares 	ypescript >=4.8.4 <6.1.0, so a TS 7
+    # bump cannot install: npm fails with ERESOLVE before a single check runs.
+    # Remove this block the day typescript-eslint accepts 7, and let the bump
+    # come through. TS 8 is deliberately NOT ignored.
+    ignore:
+      - dependency-name: typescript
+        versions:
+          - 7.x
     groups:
       actions:
         patterns:
