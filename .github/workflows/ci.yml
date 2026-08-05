@@ -20,7 +20,12 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - run: npm ci
+      # `--ignore-scripts` blocks the install-time lifecycle hooks of every
+      # dependency, direct or transitive: they run arbitrary code with the
+      # runner's token before a single test does, and that is the shortest path
+      # a compromised package has into a build. Sonar githubactions:S6505,
+      # 2026-08-06. Nothing here needs a postinstall.
+      - run: npm ci --ignore-scripts
       - run: npm run gate
 
   schema-drift:
