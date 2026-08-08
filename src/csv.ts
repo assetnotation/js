@@ -94,8 +94,19 @@ function amountOf(raw: string, delimiter: string): string {
 	if (delimiter !== ',' && cleaned.includes(',') && !cleaned.includes('.')) {
 		return cleaned.replace(',', '.');
 	}
-	// "1,234.56": the comma groups thousands and the dot is the decimal mark.
-	if (cleaned.includes(',') && cleaned.includes('.')) return cleaned.replaceAll(',', '');
+	// Both marks are present, so one groups thousands and the other is the
+	// decimal point. Which is which is decided by POSITION, never by locale: the
+	// rightmost of the two is always the decimal mark, because no notation puts a
+	// thousands separator after it. "1,234.56" and "1.234,56" are the same
+	// number, and reading the second as the first divides a balance by a thousand
+	// without anything failing.
+	const lastComma = cleaned.lastIndexOf(',');
+	const lastDot = cleaned.lastIndexOf('.');
+	if (lastComma !== -1 && lastDot !== -1) {
+		return lastComma > lastDot
+			? cleaned.replaceAll('.', '').replace(',', '.')
+			: cleaned.replaceAll(',', '');
+	}
 	return cleaned;
 }
 
