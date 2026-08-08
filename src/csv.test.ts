@@ -45,6 +45,25 @@ describe('reading a spreadsheet as people actually save it', () => {
 		expect(
 			((fr.valuations as Record<string, unknown>[])[0].value as Record<string, unknown>).amount
 		).toBe('1234.56');
+
+		// The other half of the same habit, and the one that costs: a German or
+		// Spanish sheet groups thousands with a DOT. Read as the English shape it
+		// gives "1.23456", a balance a thousand times too small, and nothing
+		// fails. Position decides: the rightmost mark is the decimal one.
+		const de = fromCsv('label;amount\nA;1.234,56\n', { generatedAt: STAMP });
+		expect(
+			((de.valuations as Record<string, unknown>[])[0].value as Record<string, unknown>).amount
+		).toBe('1234.56');
+
+		// More than one group, both ways round.
+		const millions = fromCsv('label;amount\nA;1.234.567,89\nB;"2,345,678.90"\n', {
+			generatedAt: STAMP
+		});
+		expect(
+			(millions.valuations as Record<string, unknown>[]).map(
+				(v) => (v.value as Record<string, unknown>).amount
+			)
+		).toEqual(['1234567.89', '2345678.90']);
 	});
 
 	it('keeps an amount as a string, so no float rounds a balance', () => {

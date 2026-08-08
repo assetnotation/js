@@ -1,5 +1,15 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+
+- `fromCsv`: an amount grouped with dots and pointed with a comma - `1.234,56`,
+  what a German or Spanish spreadsheet writes - was read as `1.23456`, a
+  thousandth of the balance, with nothing raised. Which mark is the decimal one
+  is now decided by position: the rightmost of the two, always. The 0.1.0 notes
+  below already promised this case worked.
+
 ## [0.1.0] - 2026-08-01
 
 First release. The reference implementation the specification did not have: an
