@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-08-09
+
 ### Fixed
 
 - `fromCsv`: an amount grouped with dots and pointed with a comma - `1.234,56`,
@@ -9,6 +11,15 @@
   thousandth of the balance, with nothing raised. Which mark is the decimal one
   is now decided by position: the rightmost of the two, always. The 0.1.0 notes
   below already promised this case worked.
+
+### Added
+
+- A publish workflow, so a fix reaches the people who installed the package
+  rather than only the people who read the repository. This one sat corrected
+  on `main` while npm went on serving the version that divides by a thousand.
+  It authenticates by OIDC against a trusted publisher declared on npmjs.com,
+  so there is no credential in the repository to rotate, leak or let expire,
+  and it publishes a tag rather than a branch.
 
 ## [0.1.0] - 2026-08-01
 
