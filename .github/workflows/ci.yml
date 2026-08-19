@@ -10,6 +10,13 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+# Without this line the runner token carries whatever the repository default
+# grants, which on a public repo can be write. Nothing here writes: the gate
+# reads the tree and the drift job clones a public repository. CodeQL
+# actions/missing-workflow-permissions, 2026-08-20.
+permissions:
+  contents: read
+
 jobs:
   gate:
     runs-on: ubuntu-latest
