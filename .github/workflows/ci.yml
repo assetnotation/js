@@ -10,17 +10,19 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
-# Without this line the runner token carries whatever the repository default
-# grants, which on a public repo can be write. Nothing here writes: the gate
-# reads the tree and the drift job clones a public repository. CodeQL
-# actions/missing-workflow-permissions, 2026-08-20.
-permissions:
-  contents: read
-
+# Le bloc `permissions` se pose PAR JOB et non au niveau du fichier : sans lui
+# le jeton du runner porte le defaut du depot, qui peut etre en ecriture
+# (CodeQL actions/missing-workflow-permissions), et pose une seule fois en tete
+# il rend un job muet sur ce qu'il demande vraiment (Sonar githubactions:S8264).
+# Les deux regles ne veulent pas la meme chose, et seul le niveau job satisfait
+# les deux. Rien ici n'ecrit : la gate lit l'arbre, le job de derive clone un
+# depot public.
 jobs:
   gate:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -42,6 +44,8 @@ jobs:
     name: schemas match the specification
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v7
       - name: Fetch the specification
