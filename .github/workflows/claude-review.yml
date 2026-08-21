@@ -36,6 +36,12 @@ jobs:
     name: Config
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    # Invariant 3 above, rendu explicite sur le job qui l'oubliait : `config`
+    # n'ecrit qu'un drapeau dans GITHUB_OUTPUT et n'a besoin de rien. Pose au
+    # niveau du FICHIER, ce bloc satisfait CodeQL et fache Sonar
+    # (githubactions:S8264) ; au niveau du job, il satisfait les deux.
+    permissions:
+      contents: read
     outputs:
       can_review: ${{ steps.flags.outputs.can_review }}
     steps:
@@ -59,7 +65,7 @@ jobs:
           fetch-depth: 0
 
       - name: Claude review
-        uses: anthropics/claude-code-action@9db594c7a0e82298c121c18b7f08aa1579ce7341 # v1
+        uses: anthropics/claude-code-action@6b082c41935b4c8a3b8b0ef85ba4ba4d9eeb8975 # v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           use_sticky_comment: true
