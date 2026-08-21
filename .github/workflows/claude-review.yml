@@ -35,6 +35,12 @@ jobs:
   config:
     name: Config
     runs-on: ubuntu-latest
+    # Invariant 3 above, rendu explicite sur le job qui l'oubliait : `config`
+    # n'ecrit qu'un drapeau dans GITHUB_OUTPUT et n'a besoin de rien. Pose au
+    # niveau du FICHIER, ce bloc satisfait CodeQL et fache Sonar
+    # (githubactions:S8264) ; au niveau du job, il satisfait les deux.
+    permissions:
+      contents: read
     outputs:
       can_review: ${{ steps.flags.outputs.can_review }}
     steps:
