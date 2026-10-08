@@ -110,6 +110,50 @@ function amountOf(raw: string, delimiter: string): string {
 	return cleaned;
 }
 
+/** The currency signs a spreadsheet's currency format prints, and the one each
+ *  can only mean. The yen sign is absent on purpose: it is also the yuan's. */
+const SIGNS: Readonly<Record<string, string>> = { '\u20AC': 'EUR', '\u00A3': 'GBP', $: 'USD' };
+
+/** A sign or an ISO code printed at one end of an amount: `12345,67\u20AC`,
+ *  `$1,234.50`, `EUR 1 000`. Spaces are already gone when this runs. */
+function currencyMark(cleaned: string): { mark: string; currency: string } | undefined {
+	for (const at of [cleaned.slice(0, 1), cleaned.slice(-1)]) {
+		if (at in SIGNS) return { mark: at, currency: SIGNS[at] };
+	}
+	for (const at of [cleaned.slice(0, 3), cleaned.slice(-3)]) {
+		if (/^[A-Z]{3}$/.test(at)) return { mark: at, currency: at };
+	}
+	return undefined;
+}
+
+/**
+ * The amount of a row and the currency it is in.
+ *
+ * A spreadsheet in a currency format exports `12 345,67 \u20AC`, and the sign
+ * used to stay glued to the number, which made every such row an invalid
+ * document. The sign is dropped only when it agrees with the row's currency -
+ * the column when there is one, else the sign itself, which is more specific
+ * than a document default. When the two disagree the raw text is kept, so the
+ * contradiction surfaces in `validate` instead of a balance silently changing
+ * currency.
+ */
+function amountAndCurrency(
+	rawAmount: string,
+	column: string,
+	delimiter: string,
+	baseCurrency: string | undefined
+): { amount: string; currency: string } {
+	const cleaned = rawAmount.replace(/[\s\u00A0\u202F]/g, '');
+	const found = currencyMark(cleaned);
+	const currency = column || found?.currency || baseCurrency || 'EUR';
+	if (found === undefined) return { amount: amountOf(cleaned, delimiter), currency };
+	if (found.currency !== currency) return { amount: cleaned, currency };
+	const bare = cleaned.startsWith(found.mark)
+		? cleaned.slice(found.mark.length)
+		: cleaned.slice(0, -found.mark.length);
+	return { amount: amountOf(bare, delimiter), currency };
+}
+
 /** The most recent valuation of a holding, or undefined when it has none. */
 function latestValuation(
 	doc: AssetNotationDocument,
@@ -190,11 +234,15 @@ export function fromCsv(text: string, options: FromCsvOptions = {}): AssetNotati
 	for (let i = 1; i < lines.length; i++) {
 		const row = splitLine(lines[i], delimiter);
 		const label = at(row, 'label');
-		const amount = amountOf(at(row, 'amount'), delimiter);
+		const { amount, currency } = amountAndCurrency(
+			at(row, 'amount'),
+			at(row, 'currency').toUpperCase(),
+			delimiter,
+			options.baseCurrency
+		);
 		if (label === '' && amount === '') continue;
 
 		const id = at(row, 'id') || `h${holdings.length + 1}`;
-		const currency = at(row, 'currency').toUpperCase() || options.baseCurrency || 'EUR';
 		const holding: Record<string, unknown> = {
 			id,
 			kind: at(row, 'kind') || 'other',

@@ -66,6 +66,41 @@ describe('reading a spreadsheet as people actually save it', () => {
 		).toEqual(['1234567.89', '2345678.90']);
 	});
 
+	it('reads an amount saved in a currency format, sign and all', () => {
+		// "12 345,67 EUR-sign" is what a cell formatted as currency exports. The
+		// sign used to stay glued to the number and the document was invalid.
+		const doc = fromCsv(
+			'label;currency;amount\n' +
+				'Livret;;12 345,67 \u20AC\n' +
+				'Brokerage;;$1,234.50\n' +
+				'Savings;GBP;\u00A3 980,00\n' +
+				'Loan;;EUR -1 000\n',
+			{ generatedAt: STAMP }
+		);
+		const values = (doc.valuations as Record<string, unknown>[]).map(
+			(v) => v.value as Record<string, unknown>
+		);
+		expect(values.map((v) => v.amount)).toEqual(['12345.67', '1234.50', '980.00', '-1000']);
+		expect(values.map((v) => v.currency)).toEqual(['EUR', 'USD', 'GBP', 'EUR']);
+		expect(validate(doc).valid).toBe(true);
+	});
+
+	it('takes the currency from the sign over a document default, never over the column', () => {
+		const signed = fromCsv('label;amount\nBrokerage;$12\n', {
+			generatedAt: STAMP,
+			baseCurrency: 'EUR'
+		});
+		const v = (signed.valuations as Record<string, unknown>[])[0].value as Record<string, unknown>;
+		expect(v).toEqual({ amount: '12', currency: 'USD' });
+
+		// A sign that contradicts its own row is not resolved by guessing: the raw
+		// text stays, and validation says so, instead of a balance changing currency.
+		const contradicted = fromCsv('label;currency;amount\nBrokerage;USD;12 \u20AC\n', {
+			generatedAt: STAMP
+		});
+		expect(validate(contradicted).valid).toBe(false);
+	});
+
 	it('keeps an amount as a string, so no float rounds a balance', () => {
 		const doc = fromCsv('label;amount\nA;0,10\nB;0,20\n', { generatedAt: STAMP });
 		const amounts = (doc.valuations as Record<string, unknown>[]).map(
