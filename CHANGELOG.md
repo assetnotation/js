@@ -2,6 +2,18 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- `fromCsv`: an amount exported from a cell formatted as currency -
+  `12 345,67 €`, `$1,234.50`, `EUR 1 000` - kept its sign glued to the number,
+  so every such row produced an amount the schema refuses. A sign or an ISO code
+  at either end of the amount is now read as the row's currency and dropped:
+  it fills an empty currency column and wins over `baseCurrency`, which is a
+  document default. When it contradicts the row's own currency column, nothing
+  is guessed: the raw text stays and `validate` reports it, rather than a
+  balance silently changing currency. The yen sign is not read, since the yuan
+  writes the same one.
+
 ## [0.1.1] - 2026-08-09
 
 ### Fixed
