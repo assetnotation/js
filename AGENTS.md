@@ -11,10 +11,10 @@ the two disagree, the spec wins and this repo has a bug.
 
 ## The rule that is easiest to break here
 
-**This repo never names another product.** Not fidalo, not selfstore, not
-quitalo, not lacantabilite - in code, docs, examples, tests, commit messages or
-PR bodies. The whole `assetnotation` organisation is under this rule, strictly
-and without exception.
+**This repo never names another product.** No app, no library, no company - in
+code, docs, examples, tests, commit messages or PR bodies, and not even in this
+file to say which ones. The whole `assetnotation` organisation is under this
+rule, strictly and without exception.
 
 The reason is not modesty: an open notation that mentions one vendor's app in its
 reference implementation stops looking like a standard. Examples use invented,
@@ -44,8 +44,18 @@ where a silent regression is invisible until someone's data is wrong.
   Florian Mousseau <florian.mousseau@gmail.com>. **No AI mention anywhere** - no
   co-author line, no trailer, no branding. `gh pr create` sometimes adds a
   generated-by trailer: re-read the body and remove it.
-- This repo is **public**. An agent prepares the pull request; the merge is
-  Florian's call, and publishing to npm is his alone.
+- This repo is **public**. An agent may merge its own pull request when its
+  checks are present AND green - a pull request with no checks at all (no
+  workflow run, Actions quota exhausted) is never green.
+- **Publishing to npm is part of the work** when a change reaches users: bump
+  the last digit, keep the gate green, tag through the `release` workflow and
+  publish through the `publish` workflow, which only ever publishes a tag. A
+  version number, once published, is never reused - when in doubt, it is a
+  patch. One release a day at most.
+- What waits for the maintainer is the content, not the repo: `schema/`
+  mirrors the specification and changes only when the specification does, and
+  a governance document (`LICENSE` and the like) is prepared, left open and
+  pointed out - never merged by an agent.
 
 ## Versions
 
