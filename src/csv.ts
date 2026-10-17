@@ -184,8 +184,16 @@ function latestValuation(
 		: [];
 	return valuations
 		.filter((v) => v.holdingId === holdingId)
-		.sort((a, b) => String(a.asOf ?? '').localeCompare(String(b.asOf ?? '')))
+		.sort((a, b) => instantOf(a.asOf) - instantOf(b.asOf))
 		.pop();
+}
+
+/** The instant a date names, so `2026-06-24T01:00:00+02:00` sorts before
+ *  `2026-06-23T23:30:00Z` as it should; a text order said otherwise. A date
+ *  alone is its UTC midnight; an unreadable one sorts first. */
+function instantOf(asOf: unknown): number {
+	const t = Date.parse(String(asOf ?? ''));
+	return Number.isNaN(t) ? -Infinity : t;
 }
 
 /** Write the document as a spreadsheet: one row per holding, with what it was
@@ -222,6 +230,14 @@ export function toCsv(doc: AssetNotationDocument, options: CsvOptions = {}): str
 	return lines.join('\n') + '\n';
 }
 
+/** An empty nature is an asset, the common case; a word that is neither is
+ *  kept as written, so `validate` refuses it instead of a debt turning into an
+ *  asset over a typo. */
+function natureOf(raw: string): string {
+	const nature = raw.toLowerCase();
+	return nature === '' ? 'asset' : nature;
+}
+
 export interface FromCsvOptions extends CsvOptions {
 	/** Stamped as the document's `generatedAt`. Given rather than read from the
 	 *  clock so the same input always produces the same bytes, which is what
@@ -247,6 +263,9 @@ export function fromCsv(text: string, options: FromCsvOptions = {}): AssetNotati
 	const generatedAt = options.generatedAt ?? new Date().toISOString();
 	const delimiter = options.delimiter ?? detectDelimiter(lines[0]);
 	const header = splitLine(lines[0], delimiter).map((h) => h.trim().toLowerCase());
+	if (!header.includes('label') && !header.includes('amount')) {
+		throw new Error('asset-notation: the CSV has neither a label nor an amount column');
+	}
 	const at = (row: string[], name: string): string => {
 		const i = header.indexOf(name);
 		return i === -1 ? '' : (row[i] ?? '').trim();
@@ -273,7 +292,7 @@ export function fromCsv(text: string, options: FromCsvOptions = {}): AssetNotati
 			kind: at(row, 'kind') || 'other',
 			// A row that does not say is an asset: that is what a spreadsheet of
 			// balances is, and a wrong "liability" would flip a net worth.
-			nature: at(row, 'nature').toLowerCase() === 'liability' ? 'liability' : 'asset',
+			nature: natureOf(at(row, 'nature')),
 			currency
 		};
 		if (label !== '') holding.label = label;

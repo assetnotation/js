@@ -16,6 +16,13 @@
 - `fromCsv`: a quoted field holding a line break, which `toCsv` writes, was
   cut into two rows. Records are now read whole, and an unclosed quote is
   refused instead of swallowing the rest of the file.
+- `fromCsv`: a header with neither a `label` nor an `amount` column produced an
+  empty document that passed validation; it is now refused.
+- `fromCsv`: a nature that is neither `asset` nor `liability` was read as an
+  asset, so a misspelt debt became an asset. It is now kept as written and
+  `validate` refuses it; an empty nature is still an asset.
+- `toCsv`: the latest valuation was chosen by text order, which offsets break;
+  it is now chosen by instant.
 
 ## [0.1.2] - 2026-10-08
 

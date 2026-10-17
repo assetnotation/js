@@ -212,6 +212,41 @@ describe('writing a spreadsheet', () => {
 		);
 	});
 
+	it('takes the latest valuation by instant, offsets included', () => {
+		const doc = {
+			assetnotation: '0.3.0',
+			generatedAt: STAMP,
+			holdings: [{ id: 'h1', kind: 'checking', nature: 'asset', label: 'Compte', currency: 'EUR' }],
+			valuations: [
+				{
+					id: 'v1',
+					holdingId: 'h1',
+					asOf: '2026-06-23T23:30:00Z',
+					value: { amount: '2.00', currency: 'EUR' }
+				},
+				{
+					id: 'v2',
+					holdingId: 'h1',
+					asOf: '2026-06-24T01:00:00+02:00',
+					value: { amount: '1.00', currency: 'EUR' }
+				}
+			]
+		};
+		expect(toCsv(doc).trim().split('\n')[1]).toContain('2.00');
+	});
+
+	it('refuses a header with neither a label nor an amount column', () => {
+		expect(() => fromCsv('libelle;montant\nCompte;12\n', { generatedAt: STAMP })).toThrow(
+			/neither a label nor an amount/
+		);
+	});
+
+	it('keeps an unknown nature for validate to refuse, not as an asset', () => {
+		const doc = fromCsv('label;amount;nature\nPret;100;liabilty\n', { generatedAt: STAMP });
+		expect((doc.holdings as { nature: string }[])[0].nature).toBe('liabilty');
+		expect(validate(doc).valid).toBe(false);
+	});
+
 	it('writes the currency of the amount it writes, not the holding one', () => {
 		const doc = {
 			assetnotation: '0.3.0',
