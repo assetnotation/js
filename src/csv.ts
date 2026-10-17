@@ -65,6 +65,26 @@ function splitLine(line: string, delimiter: string): string[] {
 	return out;
 }
 
+/** The records of a CSV text: a line break inside a quoted field belongs to the
+ *  field, as `toCsv` writes it, and an unclosed quote is refused rather than
+ *  read as the rest of the file. */
+function records(text: string): string[] {
+	const out: string[] = [];
+	let start = 0;
+	let quoted = false;
+	for (let i = 0; i < text.length; i++) {
+		const c = text[i];
+		if (c === '"') quoted = !quoted;
+		else if (c === '\n' && !quoted) {
+			out.push(text.slice(start, i).replace(/\r$/, ''));
+			start = i + 1;
+		}
+	}
+	if (quoted) throw new Error('asset-notation: the CSV has an unclosed quote');
+	out.push(text.slice(start).replace(/\r$/, ''));
+	return out;
+}
+
 function quote(value: string, delimiter: string): string {
 	return /["\n\r]/.test(value) || value.includes(delimiter)
 		? `"${value.replaceAll('"', '""')}"`
@@ -164,8 +184,16 @@ function latestValuation(
 		: [];
 	return valuations
 		.filter((v) => v.holdingId === holdingId)
-		.sort((a, b) => String(a.asOf ?? '').localeCompare(String(b.asOf ?? '')))
+		.sort((a, b) => instantOf(a.asOf) - instantOf(b.asOf))
 		.pop();
+}
+
+/** The instant a date names, so `2026-06-24T01:00:00+02:00` sorts before
+ *  `2026-06-23T23:30:00Z` as it should; a text order said otherwise. A date
+ *  alone is its UTC midnight; an unreadable one sorts first. */
+function instantOf(asOf: unknown): number {
+	const t = Date.parse(String(asOf ?? ''));
+	return Number.isNaN(t) ? -Infinity : t;
 }
 
 /** Write the document as a spreadsheet: one row per holding, with what it was
@@ -189,7 +217,9 @@ export function toCsv(doc: AssetNotationDocument, options: CsvOptions = {}): str
 			String(h.label ?? ''),
 			String(h.kind ?? ''),
 			String(h.nature ?? ''),
-			String(h.currency ?? value.currency ?? doc.baseCurrency ?? ''),
+			// The amount is the valuation's, so its currency must be too: a
+			// holding kept in EUR but valued in USD exported a USD figure as EUR.
+			String(value.currency ?? h.currency ?? doc.baseCurrency ?? ''),
 			institutions.get(String(h.institutionId ?? '')) ?? '',
 			String(value.amount ?? ''),
 			String(v?.asOf ?? ''),
@@ -198,6 +228,14 @@ export function toCsv(doc: AssetNotationDocument, options: CsvOptions = {}): str
 		lines.push(row.map((f) => quote(f, delimiter)).join(delimiter));
 	}
 	return lines.join('\n') + '\n';
+}
+
+/** An empty nature is an asset, the common case; a word that is neither is
+ *  kept as written, so `validate` refuses it instead of a debt turning into an
+ *  asset over a typo. */
+function natureOf(raw: string): string {
+	const nature = raw.toLowerCase();
+	return nature === '' ? 'asset' : nature;
 }
 
 export interface FromCsvOptions extends CsvOptions {
@@ -217,11 +255,17 @@ export interface FromCsvOptions extends CsvOptions {
  * user's call and not this function's.
  */
 export function fromCsv(text: string, options: FromCsvOptions = {}): AssetNotationDocument {
-	const lines = text.split(/\r?\n/).filter((l) => l.trim() !== '');
+	const lines = records(text).filter((l) => l.trim() !== '');
 	if (lines.length === 0) throw new Error('asset-notation: the CSV is empty');
 
+	// Read once: the document's stamp and the date of an undated row must be
+	// the same instant, and the row's was empty when no option was given.
+	const generatedAt = options.generatedAt ?? new Date().toISOString();
 	const delimiter = options.delimiter ?? detectDelimiter(lines[0]);
 	const header = splitLine(lines[0], delimiter).map((h) => h.trim().toLowerCase());
+	if (!header.includes('label') && !header.includes('amount')) {
+		throw new Error('asset-notation: the CSV has neither a label nor an amount column');
+	}
 	const at = (row: string[], name: string): string => {
 		const i = header.indexOf(name);
 		return i === -1 ? '' : (row[i] ?? '').trim();
@@ -248,7 +292,7 @@ export function fromCsv(text: string, options: FromCsvOptions = {}): AssetNotati
 			kind: at(row, 'kind') || 'other',
 			// A row that does not say is an asset: that is what a spreadsheet of
 			// balances is, and a wrong "liability" would flip a net worth.
-			nature: at(row, 'nature').toLowerCase() === 'liability' ? 'liability' : 'asset',
+			nature: natureOf(at(row, 'nature')),
 			currency
 		};
 		if (label !== '') holding.label = label;
@@ -268,7 +312,7 @@ export function fromCsv(text: string, options: FromCsvOptions = {}): AssetNotati
 			const valuation: Record<string, unknown> = {
 				id: `v${valuations.length + 1}`,
 				holdingId: id,
-				asOf: at(row, 'asOf') || at(row, 'asof') || (options.generatedAt ?? '').slice(0, 10),
+				asOf: at(row, 'asOf') || at(row, 'asof') || generatedAt.slice(0, 10),
 				value: { amount, currency }
 			};
 			const source = at(row, 'source');
@@ -279,7 +323,7 @@ export function fromCsv(text: string, options: FromCsvOptions = {}): AssetNotati
 
 	const doc: AssetNotationDocument = {
 		assetnotation: options.version ?? '0.3.0',
-		generatedAt: options.generatedAt ?? new Date().toISOString(),
+		generatedAt,
 		generator: { name: 'asset-notation', version: 'js' }
 	};
 	if (options.baseCurrency) doc.baseCurrency = options.baseCurrency;
