@@ -13,6 +13,9 @@
 - `fromCsv`: without a `generatedAt` option, an undated row got an empty
   `asOf` and the document failed validation. The stamp is now read once and
   dates both.
+- `fromCsv`: a quoted field holding a line break, which `toCsv` writes, was
+  cut into two rows. Records are now read whole, and an unclosed quote is
+  refused instead of swallowing the rest of the file.
 
 ## [0.1.2] - 2026-10-08
 

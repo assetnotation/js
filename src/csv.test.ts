@@ -192,6 +192,26 @@ describe('writing a spreadsheet', () => {
 		expect(validate(doc).valid).toBe(true);
 	});
 
+	it('reads back a label that spans several lines', () => {
+		const doc = {
+			assetnotation: '0.3.0',
+			generatedAt: STAMP,
+			holdings: [
+				{ id: 'h1', kind: 'checking', nature: 'asset', label: 'Compte\njoint', currency: 'EUR' },
+				{ id: 'h2', kind: 'savings', nature: 'asset', label: 'Livret', currency: 'EUR' }
+			]
+		};
+		const back = fromCsv(toCsv(doc), { generatedAt: STAMP });
+		const labels = (back.holdings as { label: string }[]).map((h) => h.label);
+		expect(labels).toEqual(['Compte\njoint', 'Livret']);
+	});
+
+	it('refuses an unclosed quote', () => {
+		expect(() => fromCsv('label;amount\n"Compte;12\n', { generatedAt: STAMP })).toThrow(
+			/unclosed quote/
+		);
+	});
+
 	it('writes the currency of the amount it writes, not the holding one', () => {
 		const doc = {
 			assetnotation: '0.3.0',

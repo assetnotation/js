@@ -65,6 +65,26 @@ function splitLine(line: string, delimiter: string): string[] {
 	return out;
 }
 
+/** The records of a CSV text: a line break inside a quoted field belongs to the
+ *  field, as `toCsv` writes it, and an unclosed quote is refused rather than
+ *  read as the rest of the file. */
+function records(text: string): string[] {
+	const out: string[] = [];
+	let start = 0;
+	let quoted = false;
+	for (let i = 0; i < text.length; i++) {
+		const c = text[i];
+		if (c === '"') quoted = !quoted;
+		else if (c === '\n' && !quoted) {
+			out.push(text.slice(start, i).replace(/\r$/, ''));
+			start = i + 1;
+		}
+	}
+	if (quoted) throw new Error('asset-notation: the CSV has an unclosed quote');
+	out.push(text.slice(start).replace(/\r$/, ''));
+	return out;
+}
+
 function quote(value: string, delimiter: string): string {
 	return /["\n\r]/.test(value) || value.includes(delimiter)
 		? `"${value.replaceAll('"', '""')}"`
@@ -219,7 +239,7 @@ export interface FromCsvOptions extends CsvOptions {
  * user's call and not this function's.
  */
 export function fromCsv(text: string, options: FromCsvOptions = {}): AssetNotationDocument {
-	const lines = text.split(/\r?\n/).filter((l) => l.trim() !== '');
+	const lines = records(text).filter((l) => l.trim() !== '');
 	if (lines.length === 0) throw new Error('asset-notation: the CSV is empty');
 
 	// Read once: the document's stamp and the date of an undated row must be
