@@ -90,9 +90,14 @@ export function supportedVersions(): string[] {
 /** Any top-level array of entities. Takes a plain name rather than a
  *  `Collection`: `ownership` is walked for its references but carries no id of
  *  its own, so it is not one of the collections whose ids must be unique. */
+const isObject = (v: unknown): v is Record<string, unknown> =>
+	typeof v === 'object' && v !== null && !Array.isArray(v);
+
 function list(doc: AssetNotationDocument, name: string): Record<string, unknown>[] {
 	const value = doc[name];
-	return Array.isArray(value) ? (value as Record<string, unknown>[]) : [];
+	// A null or a scalar in a collection is the schema's error to report; the
+	// checks below read fields, and must not throw instead of answering.
+	return Array.isArray(value) ? value.filter(isObject) : [];
 }
 
 function integrity(doc: AssetNotationDocument): { errors: string[]; notes: string[] } {
@@ -123,8 +128,7 @@ function integrity(doc: AssetNotationDocument): { errors: string[]; notes: strin
 		ref(from, 'institutionId', h.institutionId, 'institutions');
 		ref(from, 'instrumentId', h.instrumentId, 'instruments');
 		if (Array.isArray(h.links)) {
-			for (const raw of h.links) {
-				const link = raw as Record<string, unknown>;
+			for (const link of h.links.filter(isObject)) {
 				ref(from, `link[${String(link.rel)}].holdingId`, link.holdingId, 'holdings');
 			}
 		}

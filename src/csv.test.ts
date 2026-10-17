@@ -185,6 +185,34 @@ describe('writing a spreadsheet', () => {
 		expect(rows[1]).toContain('2026-06-24');
 	});
 
+	it('dates an undated row with the document stamp when no option gives one', () => {
+		const doc = fromCsv('label;amount\nCompte;12.50\n');
+		const valuations = doc.valuations as { asOf: string }[];
+		expect(valuations[0].asOf).toBe(String(doc.generatedAt).slice(0, 10));
+		expect(validate(doc).valid).toBe(true);
+	});
+
+	it('writes the currency of the amount it writes, not the holding one', () => {
+		const doc = {
+			assetnotation: '0.3.0',
+			generatedAt: STAMP,
+			holdings: [
+				{ id: 'h1', kind: 'brokerage', nature: 'asset', label: 'Titres', currency: 'EUR' }
+			],
+			valuations: [
+				{
+					id: 'v1',
+					holdingId: 'h1',
+					asOf: '2026-06-24',
+					value: { amount: '100.00', currency: 'USD' }
+				}
+			]
+		};
+		const row = toCsv(doc).trim().split('\n')[1];
+		expect(row).toContain('USD');
+		expect(row).not.toContain('EUR');
+	});
+
 	it('keeps a holding that has never been valued', () => {
 		// Dropping it would silently lose an account someone declared.
 		const doc = {

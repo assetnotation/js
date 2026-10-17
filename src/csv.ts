@@ -189,7 +189,9 @@ export function toCsv(doc: AssetNotationDocument, options: CsvOptions = {}): str
 			String(h.label ?? ''),
 			String(h.kind ?? ''),
 			String(h.nature ?? ''),
-			String(h.currency ?? value.currency ?? doc.baseCurrency ?? ''),
+			// The amount is the valuation's, so its currency must be too: a
+			// holding kept in EUR but valued in USD exported a USD figure as EUR.
+			String(value.currency ?? h.currency ?? doc.baseCurrency ?? ''),
 			institutions.get(String(h.institutionId ?? '')) ?? '',
 			String(value.amount ?? ''),
 			String(v?.asOf ?? ''),
@@ -220,6 +222,9 @@ export function fromCsv(text: string, options: FromCsvOptions = {}): AssetNotati
 	const lines = text.split(/\r?\n/).filter((l) => l.trim() !== '');
 	if (lines.length === 0) throw new Error('asset-notation: the CSV is empty');
 
+	// Read once: the document's stamp and the date of an undated row must be
+	// the same instant, and the row's was empty when no option was given.
+	const generatedAt = options.generatedAt ?? new Date().toISOString();
 	const delimiter = options.delimiter ?? detectDelimiter(lines[0]);
 	const header = splitLine(lines[0], delimiter).map((h) => h.trim().toLowerCase());
 	const at = (row: string[], name: string): string => {
@@ -268,7 +273,7 @@ export function fromCsv(text: string, options: FromCsvOptions = {}): AssetNotati
 			const valuation: Record<string, unknown> = {
 				id: `v${valuations.length + 1}`,
 				holdingId: id,
-				asOf: at(row, 'asOf') || at(row, 'asof') || (options.generatedAt ?? '').slice(0, 10),
+				asOf: at(row, 'asOf') || at(row, 'asof') || generatedAt.slice(0, 10),
 				value: { amount, currency }
 			};
 			const source = at(row, 'source');
@@ -279,7 +284,7 @@ export function fromCsv(text: string, options: FromCsvOptions = {}): AssetNotati
 
 	const doc: AssetNotationDocument = {
 		assetnotation: options.version ?? '0.3.0',
-		generatedAt: options.generatedAt ?? new Date().toISOString(),
+		generatedAt,
 		generator: { name: 'asset-notation', version: 'js' }
 	};
 	if (options.baseCurrency) doc.baseCurrency = options.baseCurrency;
