@@ -103,3 +103,18 @@ describe('partial disclosure stays valid', () => {
 		expect(() => validate({ assetnotation: '0.3.0', holdings: 'not an array' })).not.toThrow();
 	});
 });
+
+describe('a malformed entry in a collection', () => {
+	it.each([
+		['a null holding', { holdings: [null] }],
+		['a null link', { holdings: [{ id: 'h1', links: [null] }] }]
+	])('is reported, never thrown: %s', (_, body) => {
+		const result = validate({
+			assetnotation: '0.3.0',
+			generatedAt: '2026-08-01T00:00:00Z',
+			...body
+		});
+		expect(result.valid).toBe(false);
+		expect(result.errors.length).toBeGreaterThan(0);
+	});
+});
