@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-10-18
+
 ### Fixed
 
 - `validate`: a `null` (or any non-object) in a collection or in a holding's
