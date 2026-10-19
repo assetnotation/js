@@ -105,14 +105,14 @@ describe('the MCP tools', () => {
 			institutionId: 'i1'
 		});
 		expect(stored().institutions).toEqual([{ id: 'i1', name: 'Example Bank' }]);
-		expect((stored().holdings as unknown[]).length).toBe(1);
+		expect(stored().holdings).toHaveLength(1);
 		call('upsert_holding', {
 			id: 'loan',
 			nature: 'liability',
 			kind: 'mortgage',
 			institution: 'Example Bank'
 		});
-		expect((stored().institutions as unknown[]).length).toBe(1);
+		expect(stored().institutions).toHaveLength(1);
 	});
 
 	it('refuses a write that would make the document invalid, and leaves the file as it was', () => {
@@ -145,7 +145,7 @@ describe('the MCP tools', () => {
 			currency: 'EUR',
 			source: 'statement'
 		});
-		expect((stored().valuations as unknown[]).length).toBe(2);
+		expect(stored().valuations).toHaveLength(2);
 		expect(readFileSync(path, 'utf8')).toContain('"amount": "1010.25"');
 	});
 
@@ -281,7 +281,7 @@ describe('the MCP tools', () => {
 			['h2', 'Flat'],
 			['h3', 'New car']
 		]);
-		expect((stored().valuations as unknown[]).length).toBe(4);
+		expect(stored().valuations).toHaveLength(4);
 		expect(call('net_worth')).toMatchObject({
 			byCurrency: [{ currency: 'EUR', assets: '310300', liabilities: '0', net: '310300' }]
 		});

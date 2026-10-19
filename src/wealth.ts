@@ -9,7 +9,7 @@
  */
 
 import { fromCsv, type FromCsvOptions } from './csv.js';
-import { entities, latestValuation, type Entity } from './document.js';
+import { entities, latestValuation, text, type Entity } from './document.js';
 import { isDecimal, negateDecimal, sumDecimals } from './decimal.js';
 import { supportedVersions, type AssetNotationDocument } from './validate.js';
 
@@ -56,7 +56,7 @@ export function nextId(doc: AssetNotationDocument, collection: string, prefix: s
 	const taken = new Set(entities(doc, collection).map((e) => String(e.id)));
 	let highest = 0;
 	for (const id of taken) {
-		const m = new RegExp(`^${prefix}(\\d+)$`).exec(id);
+		const m = new RegExp(String.raw`^${prefix}(\d+)$`).exec(id);
 		if (m) highest = Math.max(highest, Number(m[1]));
 	}
 	let candidate = `${prefix}${highest + 1}`;
@@ -191,14 +191,17 @@ export function netWorth(doc: AssetNotationDocument): NetWorth {
 			continue;
 		}
 		valuedHoldings++;
-		const currency = String((value as Entity).currency ?? h.currency ?? doc.baseCurrency ?? '');
+		const currency =
+			text((value as Entity).currency) ?? text(h.currency) ?? text(doc.baseCurrency) ?? '';
 		const bucket = h.nature === 'liability' ? liabilities : assets;
 		bucket.set(currency, [...(bucket.get(currency) ?? []), amount]);
 		if (oldest === undefined || Date.parse(String(v.asOf)) < Date.parse(String(oldest.asOf)))
 			oldest = v;
 	}
 
-	const currencies = [...new Set([...assets.keys(), ...liabilities.keys()])].sort();
+	const currencies = [...new Set([...assets.keys(), ...liabilities.keys()])].sort((a, b) =>
+		a.localeCompare(b)
+	);
 	return {
 		byCurrency: currencies.map((currency) => {
 			const a = sumDecimals(assets.get(currency) ?? ['0']);
@@ -267,7 +270,7 @@ export function mergeCsv(
 			asOf: String(v.asOf),
 			amount: String(value.amount),
 			currency: String(value.currency),
-			source: v.source === undefined ? undefined : String(v.source)
+			source: text(v.source)
 		});
 		next = result.doc;
 		valuations++;

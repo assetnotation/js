@@ -11,6 +11,9 @@ export type Entity = Record<string, unknown>;
 export const isObject = (v: unknown): v is Entity =>
 	typeof v === 'object' && v !== null && !Array.isArray(v);
 
+/** A field that should be text, as text; anything else is nothing. */
+export const text = (v: unknown): string | undefined => (typeof v === 'string' ? v : undefined);
+
 /** The objects of a top-level collection; empty when it is absent or not a list. */
 export function entities(doc: AssetNotationDocument, name: string): Entity[] {
 	const value = doc[name];
@@ -21,7 +24,7 @@ export function entities(doc: AssetNotationDocument, name: string): Entity[] {
  *  `2026-06-23T23:30:00Z` as it should; a text order said otherwise. A date
  *  alone is its UTC midnight; an unreadable one sorts first. */
 export function instantOf(asOf: unknown): number {
-	const t = Date.parse(String(asOf ?? ''));
+	const t = Date.parse(typeof asOf === 'string' ? asOf : '');
 	return Number.isNaN(t) ? -Infinity : t;
 }
 

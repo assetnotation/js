@@ -64,24 +64,22 @@ function convert(text: string): ReturnType<typeof fromCsv> {
 	}
 }
 
-function dispatch(
-	command: string | undefined,
-	file: string | undefined,
-	io: Streams
-): number | Promise<number> {
-	if (command === 'validate') {
+type Command = (file: string | undefined, io: Streams) => number | Promise<number>;
+
+const COMMANDS: Record<string, Command> = {
+	validate(file, io) {
 		const result = validate(parse(read(file), file ?? ''));
 		for (const note of result.notes) io.stderr.write(`note   ${note}\n`);
 		for (const error of result.errors) io.stderr.write(`error  ${error}\n`);
 		if (!result.valid) return 1;
 		io.stderr.write(`valid  Asset Notation ${result.schemaVersion}\n`);
 		return 0;
-	}
-	if (command === 'to-csv') {
+	},
+	'to-csv'(file, io) {
 		io.stdout.write(toCsv(parse(read(file), file ?? '') as Record<string, unknown>));
 		return 0;
-	}
-	if (command === 'from-csv') {
+	},
+	'from-csv'(file, io) {
 		const doc = convert(read(file));
 		// Converted, then judged: handing back a document this library itself
 		// would reject is worse than failing, because the fault would surface
@@ -90,14 +88,28 @@ function dispatch(
 		for (const error of result.errors) io.stderr.write(`error  ${error}\n`);
 		io.stdout.write(`${JSON.stringify(doc, null, 2)}\n`);
 		return result.valid ? 0 : 1;
-	}
-	if (command === 'mcp') {
+	},
+	mcp(file) {
 		if (!file) throw new Failure(USAGE, 2);
 		// The server owns stdout from here: the protocol speaks on it, so no
 		// diagnostic of ours may. It answers when the assistant hangs up.
 		return serve(file).then(() => 0);
 	}
-	throw new Failure(USAGE, 2);
+};
+
+function dispatch(
+	command: string | undefined,
+	file: string | undefined,
+	io: Streams
+): number | Promise<number> {
+	const run =
+		command === undefined
+			? undefined
+			: Object.hasOwn(COMMANDS, command)
+				? COMMANDS[command]
+				: undefined;
+	if (!run) throw new Failure(USAGE, 2);
+	return run(file, io);
 }
 
 function report(error: unknown, io: Streams): number {
