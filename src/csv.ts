@@ -17,6 +17,7 @@
  */
 
 import { supportedVersions, type AssetNotationDocument } from './validate.js';
+import { latestValuation } from './document.js';
 
 /** Columns, in the order they are written. `institution` carries a NAME, not an
  *  id: a spreadsheet has "Crédit Mutuel" in it, never "i1". */
@@ -195,28 +196,6 @@ function dateOf(raw: string, delimiter: string): string {
 	const dayFirst = Number(first) > 12 || (Number(second) <= 12 && delimiter !== ',');
 	const [day, month] = dayFirst ? [first, second] : [second, first];
 	return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-}
-
-/** The most recent valuation of a holding, or undefined when it has none. */
-function latestValuation(
-	doc: AssetNotationDocument,
-	holdingId: unknown
-): Record<string, unknown> | undefined {
-	const valuations = Array.isArray(doc.valuations)
-		? (doc.valuations as Record<string, unknown>[])
-		: [];
-	return valuations
-		.filter((v) => v.holdingId === holdingId)
-		.sort((a, b) => instantOf(a.asOf) - instantOf(b.asOf))
-		.pop();
-}
-
-/** The instant a date names, so `2026-06-24T01:00:00+02:00` sorts before
- *  `2026-06-23T23:30:00Z` as it should; a text order said otherwise. A date
- *  alone is its UTC midnight; an unreadable one sorts first. */
-function instantOf(asOf: unknown): number {
-	const t = Date.parse(String(asOf ?? ''));
-	return Number.isNaN(t) ? -Infinity : t;
 }
 
 /** Write the document as a spreadsheet: one row per holding, with what it was

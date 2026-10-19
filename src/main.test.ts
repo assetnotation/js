@@ -25,6 +25,8 @@ function cli(...argv: string[]): { code: number; out: string; err: string } {
 		stdout: { write: (t: string) => (out += t) },
 		stderr: { write: (t: string) => (err += t) }
 	});
+	// Every command but `mcp` answers at once; a promise here would be a regression.
+	if (typeof code !== 'number') throw new Error('the command did not answer at once');
 	return { code, out, err };
 }
 
@@ -75,5 +77,12 @@ describe('the command line', () => {
 		expect(cli('frobnicate', 'x').code).toBe(2);
 		expect(cli('validate', join(dir, 'missing.json')).code).toBe(2);
 		expect(cli().err).toMatch(/^asset-notation <command> <file>/);
+	});
+
+	it('answers 2 and the usage for mcp without a file, without starting a server', () => {
+		const r = cli('mcp');
+		expect(r.code).toBe(2);
+		expect(r.err).toMatch(/mcp {6}<file\.json>/);
+		expect(r.out).toBe('');
 	});
 });

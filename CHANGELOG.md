@@ -6,6 +6,17 @@
 
 ### Added
 
+- `asset-notation mcp <file.json>`: an MCP server over stdio, so an AI
+  assistant on the same machine can read and maintain a document. Tools:
+  `read_document`, `net_worth`, `list_holdings`, `upsert_holding`,
+  `add_valuation`, `validate`, `import_csv`; one resource,
+  `asset-notation://document`. Every write validates the whole document first
+  and refuses an invalid one with its errors. Amounts stay strings. A missing
+  file is created, at the newest schema version, on the first holding.
+- `netWorth(doc)`: assets minus liabilities per currency, from the latest
+  valuation of each holding, summed exactly; with the oldest date used and
+  the holdings that have no valuation.
+- `server.json` and a `mcp-registry` workflow, for the MCP registry.
 - Specification 0.4.0: schema `0.4.0` bundled (`from` and `until` on ownership
   rows), examples mirrored, and the specification's conformance corpus
   (`conformance/`) run by the test suite, 101 cases on 0.4.0.

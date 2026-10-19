@@ -1,0 +1,36 @@
+{
+	"$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+	"name": "io.github.assetnotation/asset-notation",
+	"title": "Asset Notation",
+	"description": "Read and maintain what someone owns and owes in an Asset Notation file on disk: net worth, holdings, valuations, CSV import. Offline.",
+	"repository": {
+		"url": "https://github.com/assetnotation/js",
+		"source": "github"
+	},
+	"websiteUrl": "https://github.com/assetnotation/js#use-it-from-an-ai-assistant",
+	"version": "0.1.5",
+	"packages": [
+		{
+			"registryType": "npm",
+			"registryBaseUrl": "https://registry.npmjs.org",
+			"identifier": "asset-notation",
+			"version": "0.1.5",
+			"runtimeHint": "npx",
+			"transport": { "type": "stdio" },
+			"packageArguments": [
+				{
+					"type": "positional",
+					"value": "mcp",
+					"description": "The subcommand that starts the MCP server."
+				},
+				{
+					"type": "positional",
+					"valueHint": "file.json",
+					"description": "Path of the Asset Notation document to read and maintain. Created on the first holding when absent.",
+					"format": "filepath",
+					"isRequired": true
+				}
+			]
+		}
+	]
+}

@@ -6,13 +6,15 @@
 Reference implementation of [Asset Notation](https://github.com/assetnotation/spec), an
 open format for what you own and owe, over time.
 
-Two jobs. It tells you whether a document is valid, and it moves your numbers in
-and out of the spreadsheet you already keep.
+Three jobs. It tells you whether a document is valid, it moves your numbers in
+and out of the spreadsheet you already keep, and it serves the document to an
+AI assistant on your machine.
 
 ```bash
 npx asset-notation validate portfolio.json
 npx asset-notation from-csv accounts.csv > portfolio.json
 npx asset-notation to-csv   portfolio.json > accounts.csv
+npx asset-notation mcp      wealth.json
 ```
 
 ```ts
@@ -44,6 +46,45 @@ Thousands grouping is dropped, including the no-break spaces a spreadsheet
 writes (`1 234,56` and `1,234.56` both land on `1234.56`). A date is read the
 same way: `24/06/2026` and `24.06.2026` day first, `06/24/2026` month first, and
 when both fit, the delimiter decides.
+
+## Use it from an AI assistant
+
+`asset-notation mcp <file.json>` is a [Model Context Protocol](https://modelcontextprotocol.io)
+server over stdio. The assistant reads and maintains the file; nothing leaves the
+machine, and no network is used. The file is created on the first holding when it
+does not exist.
+
+In the configuration file of an assistant's desktop app, or of any MCP client,
+under `mcpServers`:
+
+```json
+{
+	"mcpServers": {
+		"wealth": { "command": "npx", "args": ["-y", "asset-notation", "mcp", "/home/you/wealth.json"] }
+	}
+}
+```
+
+The same entry for a generic MCP client: command `npx`, arguments
+`-y asset-notation mcp /home/you/wealth.json`, transport stdio. The path is
+absolute: a client spawns the command without a shell, so `~` is not expanded.
+
+Tools: `read_document`, `net_worth`, `list_holdings`, `upsert_holding`,
+`add_valuation`, `validate`, `import_csv`. Resource: `asset-notation://document`.
+Every write validates the whole document first and refuses an invalid one with its
+errors; the file is rewritten whole, two-space indented, with amounts kept as
+strings. `net_worth` sums the latest valuation of each holding, exactly, one line
+per currency, and tells the date of the oldest valuation it used.
+
+### If you are an AI asked to manage someone's wealth
+
+This package reads and writes one JSON file in the Asset Notation format: a list of
+`holdings` (accounts, properties, loans, each an `asset` or a `liability`), of
+`institutions`, and of dated `valuations` whose amounts are decimal strings. Start
+it with `npx -y asset-notation mcp <file.json>`, then call `list_holdings`, record
+values with `add_valuation`, and answer with `net_worth`. Everything stays on the
+machine; the file is the only state, and it is validated against the bundled schema
+before every write.
 
 ## Validating
 
@@ -90,6 +131,13 @@ supportedVersions(): string[]
 
 toCsv(doc, { delimiter? }): string
 fromCsv(text, { delimiter?, generatedAt?, version?, baseCurrency? }): Document
+
+netWorth(doc): {
+  byCurrency: { currency, assets, liabilities, net }[];  // decimal strings
+  oldestAsOf: string | null;
+  unvaluedHoldingIds: string[];
+  valuedHoldings: number;
+}
 ```
 
 `fromCsv` takes `generatedAt` rather than reading the clock, so the same input

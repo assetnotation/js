@@ -18,3 +18,6 @@ export type { AssetNotationDocument, ValidationResult } from './validate.js';
 
 export { toCsv, fromCsv, COLUMNS } from './csv.js';
 export type { CsvOptions, FromCsvOptions } from './csv.js';
+
+export { netWorth } from './wealth.js';
+export type { NetWorth } from './wealth.js';
