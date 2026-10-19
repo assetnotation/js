@@ -179,7 +179,7 @@ function parentCycles(doc: AssetNotationDocument): string[] {
 	return notes;
 }
 
-const DECIMAL = /^[0-9]+(\.[0-9]+)?$/;
+const DECIMAL = /^\d+(\.\d+)?$/;
 
 /** The exact sum of decimal strings, scaled to integers on the longest
  *  fraction: no float ever rounds an ownership share. */
