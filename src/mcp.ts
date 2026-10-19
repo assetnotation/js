@@ -13,7 +13,7 @@
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import type { Readable, Writable } from 'node:stream';
 import { z } from 'zod';
@@ -155,7 +155,11 @@ class WealthFile {
 				result.errors
 			);
 		mkdirSync(dirname(this.path), { recursive: true });
-		writeFileSync(this.path, `${JSON.stringify(final, null, 2)}\n`);
+		// Written beside, then renamed over: an interrupted write or a full disk
+		// leaves the previous file whole instead of a truncated one.
+		const temporary = `${this.path}.${process.pid}.tmp`;
+		writeFileSync(temporary, `${JSON.stringify(final, null, 2)}\n`, { flush: true });
+		renameSync(temporary, this.path);
 		return final;
 	}
 }

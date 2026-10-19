@@ -6,7 +6,14 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { mkdtempSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
+import {
+	mkdirSync,
+	mkdtempSync,
+	readFileSync,
+	readdirSync,
+	writeFileSync,
+	existsSync
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Refusal, wealthTools, type Tool } from './mcp.js';
@@ -285,6 +292,45 @@ describe('the MCP tools', () => {
 		expect(call('net_worth')).toMatchObject({
 			byCurrency: [{ currency: 'EUR', assets: '310300', liabilities: '0', net: '310300' }]
 		});
+	});
+
+	it('import_csv keeps what the sheet does not say: a debt re-imported with label and amount stays a debt', () => {
+		call('upsert_holding', {
+			id: 'h1',
+			label: 'Loan',
+			kind: 'loan',
+			nature: 'liability',
+			currency: 'USD'
+		});
+		call('import_csv', { csv: 'label;amount;asOf\nLoan;90 000;2026-10-18\n' });
+		expect(stored().holdings).toEqual([
+			{ id: 'h1', kind: 'loan', nature: 'liability', currency: 'USD', label: 'Loan' }
+		]);
+	});
+
+	it('import_csv matches a label only within the same institution', () => {
+		call('import_csv', { csv: 'label;amount;asOf;institution\nSavings;100;2026-10-01;Bank A\n' });
+		call('import_csv', { csv: 'label;amount;asOf;institution\nSavings;200;2026-10-01;Bank B\n' });
+		const holdings = stored().holdings as { id: string; institutionId: string }[];
+		expect(holdings.map((h) => [h.id, h.institutionId])).toEqual([
+			['h1', 'i1'],
+			['h2', 'i2']
+		]);
+		expect(call('net_worth')).toMatchObject({ byCurrency: [{ assets: '300' }] });
+	});
+
+	it('a write that fails leaves the previous file whole and no stray file', () => {
+		call('upsert_holding', { id: 'h1', label: 'Livret' });
+		const before = readFileSync(path, 'utf8');
+		mkdirSync(`${path}.${process.pid}.tmp`);
+		expect(() => call('upsert_holding', { id: 'h1', label: 'Livret A' })).toThrow();
+		expect(readFileSync(path, 'utf8')).toBe(before);
+	});
+
+	it('a write leaves only the document in its folder', () => {
+		call('upsert_holding', { id: 'h1', label: 'Livret' });
+		const name = path.split(/[\\/]/).pop() as string;
+		expect(readdirSync(dir).filter((f) => f.startsWith(name))).toEqual([name]);
 	});
 
 	it('import_csv refuses a spreadsheet it cannot read, in one line', () => {

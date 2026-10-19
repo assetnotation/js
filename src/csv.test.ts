@@ -281,6 +281,12 @@ describe('writing a spreadsheet', () => {
 		expect(toCsv(doc).trim().split('\n')[1]).toContain('2.00');
 	});
 
+	it('refuses a row wider than its header instead of dropping the cents', () => {
+		expect(() => fromCsv('label,amount\nSavings,1234,56\n', { generatedAt: STAMP })).toThrow(
+			/row 2 has 3 columns and the header 2/
+		);
+	});
+
 	it('refuses a header with neither a label nor an amount column', () => {
 		expect(() => fromCsv('libelle;montant\nCompte;12\n', { generatedAt: STAMP })).toThrow(
 			/neither a label nor an amount/

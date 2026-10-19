@@ -2,6 +2,18 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- `mergeCsv` (`import_csv`): a row that matches an existing holding no longer
+  overwrites the fields its sheet has no column for. Re-importing a debt with
+  only `label` and `amount` used to turn it into an asset in EUR.
+- `mergeCsv`: a label matches only within the same institution, when both
+  sides name one. Two banks with an account called "Savings" stay two holdings.
+- `fromCsv`: a row wider than its header is refused with its row number,
+  instead of reading `1234,56` under a comma header as `1234`.
+- MCP server: a write goes to a file beside the document, then replaces it, so
+  a failed write leaves the previous document whole.
+
 ## [0.1.5] - 2026-10-20
 
 ### Added

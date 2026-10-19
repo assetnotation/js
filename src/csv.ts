@@ -256,6 +256,13 @@ export interface FromCsvOptions extends CsvOptions {
  * are; anything else is kept, because deciding a row is meaningless is the
  * user's call and not this function's.
  */
+/** The lower-cased column names of a CSV's header, as `fromCsv` reads them. */
+export function csvColumns(text: string, delimiter?: ',' | ';' | '\t'): string[] {
+	const first = records(text).find((l) => l.trim() !== '');
+	if (first === undefined) return [];
+	return splitLine(first, delimiter ?? detectDelimiter(first)).map((h) => h.trim().toLowerCase());
+}
+
 export function fromCsv(text: string, options: FromCsvOptions = {}): AssetNotationDocument {
 	const lines = records(text).filter((l) => l.trim() !== '');
 	if (lines.length === 0) throw new Error('asset-notation: the CSV is empty');
@@ -279,6 +286,13 @@ export function fromCsv(text: string, options: FromCsvOptions = {}): AssetNotati
 
 	for (let i = 1; i < lines.length; i++) {
 		const row = splitLine(lines[i], delimiter);
+		// A row wider than its header is a value split by the delimiter (`1234,56`
+		// under a comma header); reading it would drop the cents without a word.
+		if (row.length > header.length) {
+			throw new Error(
+				`asset-notation: row ${i + 1} has ${row.length} columns and the header ${header.length}`
+			);
+		}
 		const label = at(row, 'label');
 		const { amount, currency } = amountAndCurrency(
 			at(row, 'amount'),

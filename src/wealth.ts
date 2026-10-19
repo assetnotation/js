@@ -8,7 +8,7 @@
  * Amounts are decimal strings all the way through and are summed exactly.
  */
 
-import { fromCsv, type FromCsvOptions } from './csv.js';
+import { csvColumns, fromCsv, type FromCsvOptions } from './csv.js';
 import { entities, latestValuation, text, type Entity } from './document.js';
 import { isDecimal, negateDecimal, sumDecimals } from './decimal.js';
 import { supportedVersions, type AssetNotationDocument } from './validate.js';
@@ -229,6 +229,9 @@ export function listHoldings(doc: AssetNotationDocument): Entity[] {
 	});
 }
 
+/** The fields `fromCsv` fills with a default when the sheet has no such column. */
+const DEFAULTED_FIELDS = ['kind', 'nature', 'currency'] as const;
+
 /**
  * Merge a spreadsheet into a document. A row lands on the holding with the
  * same id when the labels agree or the row has none; else on the holding with
@@ -244,6 +247,7 @@ export function mergeCsv(
 	options: FromCsvOptions
 ): { doc: AssetNotationDocument; holdingIds: string[]; valuations: number } {
 	const imported = fromCsv(csv, options);
+	const columns = new Set(csvColumns(csv, options.delimiter));
 	const institutionNames = new Map(
 		entities(imported, 'institutions').map((i) => [i.id, String(i.name)])
 	);
@@ -252,11 +256,15 @@ export function mergeCsv(
 
 	for (const h of entities(imported, 'holdings')) {
 		const { institutionId: importedInstitution, ...fields } = h;
-		const input: HoldingInput = {
-			...(fields as HoldingInput),
-			id: targetHoldingId(next, h),
-			institution: institutionNames.get(importedInstitution)
-		};
+		const institution = institutionNames.get(importedInstitution);
+		const id = targetHoldingId(next, h, institution);
+		// On a holding that exists, a column the sheet does not have says nothing:
+		// the converter's defaults (an `other` asset in EUR) must not turn a debt
+		// into an asset.
+		if (entities(next, 'holdings').some((existing) => existing.id === id)) {
+			for (const field of DEFAULTED_FIELDS) if (!columns.has(field)) delete fields[field];
+		}
+		const input: HoldingInput = { ...(fields as HoldingInput), id, institution };
 		const result = upsertHolding(next, input);
 		next = result.doc;
 		holdingIds.set(String(h.id), String(result.holding.id));
@@ -278,13 +286,30 @@ export function mergeCsv(
 	return { doc: next, holdingIds: [...new Set(holdingIds.values())], valuations };
 }
 
-function targetHoldingId(doc: AssetNotationDocument, imported: Entity): string {
+function targetHoldingId(
+	doc: AssetNotationDocument,
+	imported: Entity,
+	institution: string | undefined
+): string {
 	const holdings = entities(doc, 'holdings');
+	const names = new Map(entities(doc, 'institutions').map((i) => [i.id, String(i.name)]));
+	// Two banks may each hold an account called "Epargne": a label matches only
+	// within the same institution, when both sides name one.
+	const sameInstitution = (h: Entity): boolean => {
+		const name = names.get(h.institutionId);
+		return institution === undefined || name === undefined || name === institution;
+	};
 	const sameId = holdings.find((h) => h.id === imported.id);
-	if (sameId && (imported.label === undefined || sameId.label === imported.label))
+	if (
+		sameId &&
+		(imported.label === undefined || sameId.label === imported.label) &&
+		sameInstitution(sameId)
+	)
 		return String(sameId.id);
 	const sameLabel =
-		imported.label === undefined ? undefined : holdings.find((h) => h.label === imported.label);
+		imported.label === undefined
+			? undefined
+			: holdings.find((h) => h.label === imported.label && sameInstitution(h));
 	if (sameLabel) return String(sameLabel.id);
 	return sameId ? nextId(doc, 'holdings', 'h') : String(imported.id);
 }
