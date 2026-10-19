@@ -2,18 +2,26 @@
 #
 # The registry holds metadata only: `server.json` names the npm package and the
 # version, and the registry checks that the published package.json carries the
-# matching `mcpName`. So this runs when the `publish` workflow has succeeded,
-# on the commit it published, and only once npm actually serves that version.
-# A dispatch with the tag replays it when a run was missed.
+# matching `mcpName`. So this runs as the last job of the `publish` workflow,
+# on the tag it published, and only once npm actually serves that version. A
+# dispatch with the tag replays it when that job was missed.
+#
+# Called, not triggered by `workflow_run`: a job that reacts to another run
+# and checks out that run's commit is the shape of a privileged workflow
+# executing untrusted code, and the scanners say so. Here the tag is a
+# maintainer's dispatch input, the same one `publish` checks out.
 #
 # Authenticated by GitHub OIDC: the registry grants the io.github.<owner>/*
 # namespace to a job of a repository that owner holds. No secret to rotate.
 name: mcp-registry
 
 on:
-  workflow_run:
-    workflows: [publish]
-    types: [completed]
+  workflow_call:
+    inputs:
+      tag:
+        description: Tag already published to npm, with the v prefix (e.g. v0.1.5).
+        required: true
+        type: string
   workflow_dispatch:
     inputs:
       tag:
@@ -26,14 +34,12 @@ permissions:
 
 jobs:
   publish:
-    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          # The dispatched tag, or the commit the publish run checked out.
-          ref: ${{ inputs.tag || github.event.workflow_run.head_sha }}
+          ref: ${{ inputs.tag }}
           persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
@@ -62,7 +68,7 @@ jobs:
 
       - name: Install mcp-publisher
         run: |
-          curl -fsSL "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/').tar.gz" | tar xz mcp-publisher
+          curl --proto '=https' --tlsv1.2 -fsSL "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/').tar.gz" | tar xz mcp-publisher
           ./mcp-publisher --help >/dev/null
 
       - name: Validate server.json
@@ -78,5 +84,5 @@ jobs:
         run: |
           name=$(node -p "require('./server.json').name")
           version=$(node -p "require('./server.json').version")
-          curl -fsS "https://registry.modelcontextprotocol.io/v0/servers?search=$name" | grep -q "\"version\":\"$version\"" \
+          curl --proto '=https' --tlsv1.2 -fsS "https://registry.modelcontextprotocol.io/v0/servers?search=$name" | grep -q "\"version\":\"$version\"" \
             || { echo "::error::$name $version is not listed."; exit 1; }

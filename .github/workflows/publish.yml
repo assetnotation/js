@@ -115,3 +115,14 @@ jobs:
           # publishes, a few times a month.
           NPM_CONFIG_LOGLEVEL: verbose
         run: npm publish --provenance --access public
+
+  # The MCP registry entry, once npm serves the version. Its own file, so a
+  # missed run can be replayed by dispatching it with the tag.
+  mcp-registry:
+    needs: publish
+    uses: ./.github/workflows/mcp-registry.yml
+    with:
+      tag: ${{ inputs.tag }}
+    permissions:
+      contents: read
+      id-token: write
