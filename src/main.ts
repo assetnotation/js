@@ -102,12 +102,8 @@ function dispatch(
 	file: string | undefined,
 	io: Streams
 ): number | Promise<number> {
-	const run =
-		command === undefined
-			? undefined
-			: Object.hasOwn(COMMANDS, command)
-				? COMMANDS[command]
-				: undefined;
+	const known = command !== undefined && Object.hasOwn(COMMANDS, command);
+	const run = known ? COMMANDS[command] : undefined;
 	if (!run) throw new Failure(USAGE, 2);
 	return run(file, io);
 }
