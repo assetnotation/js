@@ -13,6 +13,7 @@
 import { readFileSync } from 'node:fs';
 import { validate, supportedVersions } from './validate.js';
 import { toCsv, fromCsv } from './csv.js';
+import { serve } from './mcp.js';
 
 export interface Streams {
 	stdout: { write(text: string): unknown };
@@ -24,6 +25,7 @@ const USAGE = `asset-notation <command> <file>
   validate <file.json>   judge a document, and say why if it fails
   to-csv   <file.json>   write it as a spreadsheet, one row per holding
   from-csv <file.csv>    read a spreadsheet into a document
+  mcp      <file.json>   serve the document to an AI assistant (MCP over stdio)
 
 Schemas bundled: ${supportedVersions().join(', ')}`;
 
@@ -62,20 +64,22 @@ function convert(text: string): ReturnType<typeof fromCsv> {
 	}
 }
 
-function dispatch(command: string | undefined, file: string | undefined, io: Streams): number {
-	if (command === 'validate') {
+type Command = (file: string | undefined, io: Streams) => number | Promise<number>;
+
+const COMMANDS: Record<string, Command> = {
+	validate(file, io) {
 		const result = validate(parse(read(file), file ?? ''));
 		for (const note of result.notes) io.stderr.write(`note   ${note}\n`);
 		for (const error of result.errors) io.stderr.write(`error  ${error}\n`);
 		if (!result.valid) return 1;
 		io.stderr.write(`valid  Asset Notation ${result.schemaVersion}\n`);
 		return 0;
-	}
-	if (command === 'to-csv') {
+	},
+	'to-csv'(file, io) {
 		io.stdout.write(toCsv(parse(read(file), file ?? '') as Record<string, unknown>));
 		return 0;
-	}
-	if (command === 'from-csv') {
+	},
+	'from-csv'(file, io) {
 		const doc = convert(read(file));
 		// Converted, then judged: handing back a document this library itself
 		// would reject is worse than failing, because the fault would surface
@@ -84,18 +88,40 @@ function dispatch(command: string | undefined, file: string | undefined, io: Str
 		for (const error of result.errors) io.stderr.write(`error  ${error}\n`);
 		io.stdout.write(`${JSON.stringify(doc, null, 2)}\n`);
 		return result.valid ? 0 : 1;
+	},
+	mcp(file) {
+		if (!file) throw new Failure(USAGE, 2);
+		// The server owns stdout from here: the protocol speaks on it, so no
+		// diagnostic of ours may. It answers when the assistant hangs up.
+		return serve(file).then(() => 0);
 	}
-	throw new Failure(USAGE, 2);
+};
+
+function dispatch(
+	command: string | undefined,
+	file: string | undefined,
+	io: Streams
+): number | Promise<number> {
+	const known = command !== undefined && Object.hasOwn(COMMANDS, command);
+	const run = known ? COMMANDS[command] : undefined;
+	if (!run) throw new Failure(USAGE, 2);
+	return run(file, io);
 }
 
-/** Run one command and answer with its exit code. */
-export function run(argv: string[], io: Streams): number {
+function report(error: unknown, io: Streams): number {
+	if (!(error instanceof Failure)) throw error;
+	io.stderr.write(`${error.message}\n`);
+	return error.code;
+}
+
+/** Run one command and answer with its exit code: at once for a conversion, and
+ *  once the assistant hangs up for `mcp`. */
+export function run(argv: string[], io: Streams): number | Promise<number> {
 	const [command, file] = argv;
 	try {
-		return dispatch(command, file, io);
+		const code = dispatch(command, file, io);
+		return typeof code === 'number' ? code : code.catch((error: unknown) => report(error, io));
 	} catch (error) {
-		if (!(error instanceof Failure)) throw error;
-		io.stderr.write(`${error.message}\n`);
-		return error.code;
+		return report(error, io);
 	}
 }

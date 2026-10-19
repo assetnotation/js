@@ -1,7 +1,8 @@
 {
 	"name": "asset-notation",
 	"version": "0.1.5",
-	"description": "Reference implementation of the Asset Notation format: validate a document, and convert to and from the spreadsheets people already keep.",
+	"description": "Reference implementation of the Asset Notation format: validate a document, convert to and from the spreadsheets people already keep, and serve it to an AI assistant over MCP (stdio, offline) so the assistant can read and maintain what someone owns and owes.",
+	"mcpName": "io.github.assetnotation/asset-notation",
 	"keywords": [
 		"asset-notation",
 		"open-standard",
@@ -9,7 +10,15 @@
 		"personal-finance",
 		"net-worth",
 		"csv",
-		"validator"
+		"validator",
+		"mcp",
+		"model-context-protocol",
+		"ai-agent",
+		"wealth",
+		"portfolio",
+		"assets",
+		"liabilities",
+		"patrimoine"
 	],
 	"license": "Apache-2.0",
 	"author": "Florian Mousseau",
@@ -34,7 +43,8 @@
 		"dist",
 		"schema",
 		"LICENSE",
-		"README.md"
+		"README.md",
+		"server.json"
 	],
 	"engines": {
 		"node": ">=20"
@@ -50,8 +60,10 @@
 		"prepublishOnly": "npm run gate"
 	},
 	"dependencies": {
+		"@modelcontextprotocol/sdk": "^1.32.1",
 		"ajv": "^8.20.0",
-		"ajv-formats": "^3.0.1"
+		"ajv-formats": "^3.0.1",
+		"zod": "^4.6.7"
 	},
 	"devDependencies": {
 		"@eslint/js": "^10.0.1",
