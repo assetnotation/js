@@ -2,6 +2,19 @@
 
 ## [Unreleased]
 
+## [0.1.5] - 2026-10-20
+
+### Added
+
+- Specification 0.4.0: schema `0.4.0` bundled (`from` and `until` on ownership
+  rows), examples mirrored, and the specification's conformance corpus
+  (`conformance/`) run by the test suite, 101 cases on 0.4.0.
+- `validate`: a `parentId` chain that comes back on itself is an error, as
+  section 4 of the specification now says; a note in 0.1.4.
+- `validate`: two ownership rows of one subject on one holding whose intervals
+  overlap are an error (section 5.7).
+- `fromCsv` declares `0.4.0` by default, the newest schema bundled.
+
 ## [0.1.4] - 2026-10-19
 
 ### Fixed

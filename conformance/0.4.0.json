@@ -1,0 +1,1370 @@
+{
+  "description": "Conformance cases for Asset Notation 0.4.0. Each case is a whole document and the verdict a conformant validator must reach on it. `section` points to versions/0.4.0.md. For an invalid case, `expect` is the JSON Pointer (instancePath) of one error the schema must raise there - an empty string is the document root - or \"duplicate-id\" for the document-level invariant of section 4, which a JSON Schema cannot express.",
+  "version": "0.4.0",
+  "cases": [
+    {
+      "name": "minimal document",
+      "section": "14",
+      "valid": true,
+      "document": {
+        "assetnotation": "0.4.0",
+        "generatedAt": "2026-07-08T09:00:00Z",
+        "holdings": []
+      }
+    },
+    {
+      "name": "timestamp with an offset",
+      "section": "3",
+      "valid": true,
+      "document": {
+        "assetnotation": "0.4.0",
+        "generatedAt": "2026-07-08T11:00:00+02:00",
+        "holdings": []
+      }
+    },
+    {
+      "name": "valuation asOf as a timestamp",
+      "section": "3",
+      "valid": true,
+      "document": {
+        "assetnotation": "0.4.0",
+        "generatedAt": "2026-07-08T09:00:00Z",
+        "holdings": [
+          {
+            "id": "h1",
+            "kind": "checking",
+            "nature": "asset",
+            "currency": "EUR"
+          }
+        ],
+        "valuations": [
+          {
+            "id": "v1",
+            "holdingId": "h1",
+            "asOf": "2026-06-30T17:30:00Z",
+            "value": {
+              "amount": "10.00",
+              "currency": "EUR"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "negative decimal and integer amounts",
+      "section": "8",
+      "valid": true,
+      "document": {
+        "assetnotation": "0.4.0",
+        "generatedAt": "2026-07-08T09:00:00Z",
+        "holdings": [
+          {
+            "id": "h1",
+            "kind": "checking",
+            "nature": "asset",
+            "currency": "EUR"
+          }
+        ],
+        "valuations": [
+          {
+            "id": "v1",
+            "holdingId": "h1",
+            "asOf": "2026-06-30",
+            "value": {
+              "amount": "-50",
+              "currency": "EUR"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "unknown holding kind",
+      "section": "5.3",
+      "valid": true,
+      "document": {
+        "assetnotation": "0.4.0",
+        "generatedAt": "2026-07-08T09:00:00Z",
+        "holdings": [
+          {
+            "id": "h1",
+            "kind": "parking_space",
+            "nature": "asset"
+          }
+        ]
+      }
+    },
+    {
+      "name": "unknown transaction type",
+      "section": "5.6",
+      "valid": true,
+      "document": {
+        "assetnotation": "0.4.0",
+        "generatedAt": "2026-07-08T09:00:00Z",
+        "holdings": [
+          {
+            "id": "h1",
+            "kind": "checking",
+            "nature": "asset",
+            "currency": "EUR"
+          }
+        ],
+        "transactions": [
+          {
+            "id": "t1",
+            "holdingId": "h1",
+            "date": "2026-06-30",
+            "type": "cashback",
+            "amount": {
+              "amount": "2.00",
+              "currency": "EUR"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "unknown field on an entity is preserved, not rejected",
+      "section": "13",
+      "valid": true,
+      "document": {
+        "assetnotation": "0.4.0",
+        "generatedAt": "2026-07-08T09:00:00Z",
+        "holdings": [
+          {
+            "id": "h1",
+            "kind": "checking",
+            "nature": "asset",
+            "currency": "EUR",
+            "nickname": "daily"
+          }
+        ]
+      }
+    },
+    {
+      "name": "x- field and namespaced extension",
+      "section": "10",
+      "valid": true,
+      "document": {
+        "assetnotation": "0.4.0",
+        "generatedAt": "2026-07-08T09:00:00Z",
+        "holdings": [
+          {
+            "id": "h1",
+            "kind": "checking",
+            "nature": "asset",
+            "currency": "EUR",
+            "x-color": "#336699"
+          }
+        ],
+        "extensions": {
+          "org.example.budget": {
+            "rules": []
+          }
+        }
+      }
+    },
+    {
+      "name": "unresolved reference under partial disclosure",
+      "section": "4",
+      "valid": true,
+      "document": {
+        "assetnotation": "0.4.0",
+        "generatedAt": "2026-07-08T09:00:00Z",
+        "holdings": [],
+        "valuations": [
+          {
+            "id": "v1",
+            "holdingId": "h9",
+            "asOf": "2026-06-30",
+            "value": {
+              "amount": "10.00",
+              "currency": "EUR"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "same id in two different collections",
+      "section": "4",
+      "valid": true,
+      "document": {
+        "assetnotation": "0.4.0",
+        "generatedAt": "2026-07-08T09:00:00Z",
+        "holdings": [
+          {
+            "id": "h1",
+            "kind": "checking",
+            "nature": "asset",
+            "currency": "EUR"
+          }
+        ],
+        "valuations": [
+          {
+            "id": "h1",
+            "holdingId": "h1",
+            "asOf": "2026-06-30",
+            "value": {
+              "amount": "10.00",
+              "currency": "EUR"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "corporate action with a factor and no amount",
+      "section": "5.6",
+      "valid": true,
+      "document": {
+        "assetnotation": "0.4.0",
+        "generatedAt": "2026-07-08T09:00:00Z",
+        "holdings": [
+          {
+            "id": "h1",
+            "kind": "checking",
+            "nature": "asset",
+            "currency": "EUR"
+          }
+        ],
+        "transactions": [
+          {
+            "id": "t1",
+            "holdingId": "h1",
+            "date": "2026-06-16",
+            "type": "corporate_action",
+            "factor": "2"
+          }
+        ]
+      }
+    },
+    {
+      "name": "masked IBAN and account number",
+      "section": "11",
+      "valid": true,
+      "document": {
+        "assetnotation": "0.4.0",
+        "generatedAt": "2026-07-08T09:00:00Z",
+        "holdings": [
+          {
+            "id": "h1",
+            "kind": "checking",
+            "nature": "asset",
+            "currency": "EUR",
+            "ids": {
+              "iban": "FR76 XXXX XXXX XX",
+              "number": "****1234"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "unknown key inside ids",
+      "section": "13",
+      "valid": true,
+      "document": {
+        "assetnotation": "0.4.0",
+        "generatedAt": "2026-07-08T09:00:00Z",
+        "holdings": [
+          {
+            "id": "h1",
+            "kind": "checking",
+            "nature": "asset",
+            "currency": "EUR",
+            "ids": {
+              "x-internal": "42"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "ownership shares at both bounds",
+      "section": "5.7",
+      "valid": true,
+      "document": {
+        "assetnotation": "0.4.0",
+        "generatedAt": "2026-07-08T09:00:00Z",
+        "subjects": [
+          {
+            "id": "s1",
+            "type": "person"
+          },
+          {
+            "id": "s2",
+            "type": "person"
+          }
+        ],
+        "holdings": [
+          {
+            "id": "h1",
+            "kind": "checking",
+            "nature": "asset",
+            "currency": "EUR"
+          }
+        ],
+        "ownership": [
+          {
+            "subjectId": "s1",
+            "holdingId": "h1",
+            "share": "1"
+          },
+          {
+            "subjectId": "s2",
+            "holdingId": "h1",
+            "share": "0"
+          }
+        ]
+      }
+    },
+    {
+      "name": "liability carrying a positive outstanding",
+      "section": "5.3",
+      "valid": true,
+      "document": {
+        "assetnotation": "0.4.0",
+        "generatedAt": "2026-07-08T09:00:00Z",
+        "holdings": [
+          {
+            "id": "h1",
+            "kind": "mortgage",
+            "nature": "liability"
+          }
+        ],
+        "valuations": [
+          {
+            "id": "v1",
+            "holdingId": "h1",
+            "asOf": "2026-06-30",
+            "value": {
+              "amount": "176400.00",
+              "currency": "EUR"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "missing holdings",
+      "section": "4",
+      "valid": false,
+      "expect": "",
+      "document": {
+        "assetnotation": "0.4.0",
+        "generatedAt": "2026-07-08T09:00:00Z"
+      }
+    },
+    {
+      "name": "missing generatedAt",
+      "section": "4",
+      "valid": false,
+      "expect": "",
+      "document": {
+        "assetnotation": "0.4.0",
+        "holdings": []
+      }
+    },
+    {
+      "name": "generatedAt as a bare date",
+      "section": "3",
+      "valid": false,
+      "expect": "/generatedAt",
+      "document": {
+        "assetnotation": "0.4.0",
+        "generatedAt": "2026-07-08",
+        "holdings": []
+      }
+    },
+    {
+      "name": "money amount as a JSON number",
+      "section": "3",
+      "valid": false,
+      "expect": "/valuations/0/value/amount",
+      "document": {
+        "assetnotation": "0.4.0",
+        "generatedAt": "2026-07-08T09:00:00Z",
+        "holdings": [
+          {
+            "id": "h1",
+            "kind": "checking",
+            "nature": "asset",
+            "currency": "EUR"
+          }
+        ],
+        "valuations": [
+          {
+            "id": "v1",
+            "holdingId": "h1",
+            "asOf": "2026-06-30",
+            "value": {
+              "amount": 12.5,
+              "currency": "EUR"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "money amount with a thousands separator",
+      "section": "8",
+      "valid": false,
+      "expect": "/valuations/0/value/amount",
+      "document": {
+        "assetnotation": "0.4.0",
+        "generatedAt": "2026-07-08T09:00:00Z",
+        "holdings": [
+          {
+            "id": "h1",
+            "kind": "checking",
+            "nature": "asset",
+            "currency": "EUR"
+          }
+        ],
+        "valuations": [
+          {
+            "id": "v1",
+            "holdingId": "h1",
+            "asOf": "2026-06-30",
+            "value": {
+              "amount": "1,234.50",
+              "currency": "EUR"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "money amount with a currency symbol",
+      "section": "8",
+      "valid": false,
+      "expect": "/valuations/0/value/amount",
+      "document": {
+        "assetnotation": "0.4.0",
+        "generatedAt": "2026-07-08T09:00:00Z",
+        "holdings": [
+          {
+            "id": "h1",
+            "kind": "checking",
+            "nature": "asset",
+            "currency": "EUR"
+          }
+        ],
+        "valuations": [
+          {
+            "id": "v1",
+            "holdingId": "h1",
+            "asOf": "2026-06-30",
+            "value": {
+              "amount": "12.50 EUR",
+              "currency": "EUR"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "money amount in exponent notation",
+      "section": "8",
+      "valid": false,
+      "expect": "/valuations/0/value/amount",
+      "document": {
+        "assetnotation": "0.4.0",
+        "generatedAt": "2026-07-08T09:00:00Z",
+        "holdings": [
+          {
+            "id": "h1",
+            "kind": "checking",
+            "nature": "asset",
+            "currency": "EUR"
+          }
+        ],
+        "valuations": [
+          {
+            "id": "v1",
+            "holdingId": "h1",
+            "asOf": "2026-06-30",
+            "value": {
+              "amount": "1e5",
+              "currency": "EUR"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "money amount with a leading plus sign",
+      "section": "8",
+      "valid": false,
+      "expect": "/valuations/0/value/amount",
+      "document": {
+        "assetnotation": "0.4.0",
+        "generatedAt": "2026-07-08T09:00:00Z",
+        "holdings": [
+          {
+            "id": "h1",
+            "kind": "checking",
+            "nature": "asset",
+            "currency": "EUR"
+          }
+        ],
+        "valuations": [
+          {
+            "id": "v1",
+            "holdingId": "h1",
+            "asOf": "2026-06-30",
+            "value": {
+              "amount": "+5.00",
+              "currency": "EUR"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "money amount with a comma as decimal separator",
+      "section": "8",
+      "valid": false,
+      "expect": "/valuations/0/value/amount",
+      "document": {
+        "assetnotation": "0.4.0",
+        "generatedAt": "2026-07-08T09:00:00Z",
+        "holdings": [
+          {
+            "id": "h1",
+            "kind": "checking",
+            "nature": "asset",
+            "currency": "EUR"
+          }
+        ],
+        "valuations": [
+          {
+            "id": "v1",
+            "holdingId": "h1",
+            "asOf": "2026-06-30",
+            "value": {
+              "amount": "12,50",
+              "currency": "EUR"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "money amount with no integer digit",
+      "section": "8",
+      "valid": false,
+      "expect": "/valuations/0/value/amount",
+      "document": {
+        "assetnotation": "0.4.0",
+        "generatedAt": "2026-07-08T09:00:00Z",
+        "holdings": [
+          {
+            "id": "h1",
+            "kind": "checking",
+            "nature": "asset",
+            "currency": "EUR"
+          }
+        ],
+        "valuations": [
+          {
+            "id": "v1",
+            "holdingId": "h1",
+            "asOf": "2026-06-30",
+            "value": {
+              "amount": ".5",
+              "currency": "EUR"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "lower-case currency code",
+      "section": "3",
+      "valid": false,
+      "expect": "/valuations/0/value/currency",
+      "document": {
+        "assetnotation": "0.4.0",
+        "generatedAt": "2026-07-08T09:00:00Z",
+        "holdings": [
+          {
+            "id": "h1",
+            "kind": "checking",
+            "nature": "asset",
+            "currency": "EUR"
+          }
+        ],
+        "valuations": [
+          {
+            "id": "v1",
+            "holdingId": "h1",
+            "asOf": "2026-06-30",
+            "value": {
+              "amount": "10.00",
+              "currency": "eur"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "money missing its currency",
+      "section": "3",
+      "valid": false,
+      "expect": "/valuations/0/value",
+      "document": {
+        "assetnotation": "0.4.0",
+        "generatedAt": "2026-07-08T09:00:00Z",
+        "holdings": [
+          {
+            "id": "h1",
+            "kind": "checking",
+            "nature": "asset",
+            "currency": "EUR"
+          }
+        ],
+        "valuations": [
+          {
+            "id": "v1",
+            "holdingId": "h1",
+            "asOf": "2026-06-30",
+            "value": {
+              "amount": "10.00"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "unknown key in a money object",
+      "section": "13",
+      "valid": false,
+      "expect": "/valuations/0/value",
+      "document": {
+        "assetnotation": "0.4.0",
+        "generatedAt": "2026-07-08T09:00:00Z",
+        "holdings": [
+          {
+            "id": "h1",
+            "kind": "checking",
+            "nature": "asset",
+            "currency": "EUR"
+          }
+        ],
+        "valuations": [
+          {
+            "id": "v1",
+            "holdingId": "h1",
+            "asOf": "2026-06-30",
+            "value": {
+              "amount": "10.00",
+              "currency": "EUR",
+              "amoutn": "10.00"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "unknown key in an fx object",
+      "section": "13",
+      "valid": false,
+      "expect": "/valuations/0/fx",
+      "document": {
+        "assetnotation": "0.4.0",
+        "generatedAt": "2026-07-08T09:00:00Z",
+        "holdings": [
+          {
+            "id": "h1",
+            "kind": "checking",
+            "nature": "asset",
+            "currency": "EUR"
+          }
+        ],
+        "valuations": [
+          {
+            "id": "v1",
+            "holdingId": "h1",
+            "asOf": "2026-06-30",
+            "value": {
+              "amount": "10.00",
+              "currency": "USD"
+            },
+            "fx": {
+              "base": "EUR",
+              "rate": "0.92",
+              "date": "2026-06-30"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "holding without nature",
+      "section": "5.3",
+      "valid": false,
+      "expect": "/holdings/0",
+      "document": {
+        "assetnotation": "0.4.0",
+        "generatedAt": "2026-07-08T09:00:00Z",
+        "holdings": [
+          {
+            "id": "h1",
+            "kind": "checking"
+          }
+        ]
+      }
+    },
+    {
+      "name": "holding nature outside the closed enum",
+      "section": "5.3",
+      "valid": false,
+      "expect": "/holdings/0/nature",
+      "document": {
+        "assetnotation": "0.4.0",
+        "generatedAt": "2026-07-08T09:00:00Z",
+        "holdings": [
+          {
+            "id": "h1",
+            "kind": "checking",
+            "nature": "debt",
+            "currency": "EUR"
+          }
+        ]
+      }
+    },
+    {
+      "name": "holding with an empty kind",
+      "section": "5.3",
+      "valid": false,
+      "expect": "/holdings/0/kind",
+      "document": {
+        "assetnotation": "0.4.0",
+        "generatedAt": "2026-07-08T09:00:00Z",
+        "holdings": [
+          {
+            "id": "h1",
+            "kind": "",
+            "nature": "asset",
+            "currency": "EUR"
+          }
+        ]
+      }
+    },
+    {
+      "name": "subject type outside the closed enum",
+      "section": "5.1",
+      "valid": false,
+      "expect": "/subjects/0/type",
+      "document": {
+        "assetnotation": "0.4.0",
+        "generatedAt": "2026-07-08T09:00:00Z",
+        "subjects": [
+          {
+            "id": "s1",
+            "type": "company"
+          }
+        ],
+        "holdings": []
+      }
+    },
+    {
+      "name": "quantity as a JSON number",
+      "section": "3",
+      "valid": false,
+      "expect": "/holdings/0/quantity",
+      "document": {
+        "assetnotation": "0.4.0",
+        "generatedAt": "2026-07-08T09:00:00Z",
+        "holdings": [
+          {
+            "id": "h1",
+            "kind": "brokerage",
+            "nature": "asset",
+            "currency": "EUR",
+            "instrumentId": "n1",
+            "quantity": 40
+          }
+        ]
+      }
+    },
+    {
+      "name": "openedAt as a timestamp",
+      "section": "5.3",
+      "valid": false,
+      "expect": "/holdings/0/openedAt",
+      "document": {
+        "assetnotation": "0.4.0",
+        "generatedAt": "2026-07-08T09:00:00Z",
+        "holdings": [
+          {
+            "id": "h1",
+            "kind": "checking",
+            "nature": "asset",
+            "currency": "EUR",
+            "openedAt": "2020-01-01T00:00:00Z"
+          }
+        ]
+      }
+    },
+    {
+      "name": "transaction without amount",
+      "section": "5.6",
+      "valid": false,
+      "expect": "/transactions/0",
+      "document": {
+        "assetnotation": "0.4.0",
+        "generatedAt": "2026-07-08T09:00:00Z",
+        "holdings": [
+          {
+            "id": "h1",
+            "kind": "checking",
+            "nature": "asset",
+            "currency": "EUR"
+          }
+        ],
+        "transactions": [
+          {
+            "id": "t1",
+            "holdingId": "h1",
+            "date": "2026-06-30",
+            "type": "fee"
+          }
+        ]
+      }
+    },
+    {
+      "name": "corporate action without factor",
+      "section": "5.6",
+      "valid": false,
+      "expect": "/transactions/0",
+      "document": {
+        "assetnotation": "0.4.0",
+        "generatedAt": "2026-07-08T09:00:00Z",
+        "holdings": [
+          {
+            "id": "h1",
+            "kind": "checking",
+            "nature": "asset",
+            "currency": "EUR"
+          }
+        ],
+        "transactions": [
+          {
+            "id": "t1",
+            "holdingId": "h1",
+            "date": "2026-06-16",
+            "type": "corporate_action"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ownership share as a JSON number",
+      "section": "5.7",
+      "valid": false,
+      "expect": "/ownership/0/share",
+      "document": {
+        "assetnotation": "0.4.0",
+        "generatedAt": "2026-07-08T09:00:00Z",
+        "subjects": [
+          {
+            "id": "s1",
+            "type": "person"
+          }
+        ],
+        "holdings": [
+          {
+            "id": "h1",
+            "kind": "checking",
+            "nature": "asset",
+            "currency": "EUR"
+          }
+        ],
+        "ownership": [
+          {
+            "subjectId": "s1",
+            "holdingId": "h1",
+            "share": 0.5
+          }
+        ]
+      }
+    },
+    {
+      "name": "ownership share above one",
+      "section": "5.7",
+      "valid": false,
+      "expect": "/ownership/0/share",
+      "document": {
+        "assetnotation": "0.4.0",
+        "generatedAt": "2026-07-08T09:00:00Z",
+        "subjects": [
+          {
+            "id": "s1",
+            "type": "person"
+          }
+        ],
+        "holdings": [
+          {
+            "id": "h1",
+            "kind": "checking",
+            "nature": "asset",
+            "currency": "EUR"
+          }
+        ],
+        "ownership": [
+          {
+            "subjectId": "s1",
+            "holdingId": "h1",
+            "share": "1.5"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ownership share below zero",
+      "section": "5.7",
+      "valid": false,
+      "expect": "/ownership/0/share",
+      "document": {
+        "assetnotation": "0.4.0",
+        "generatedAt": "2026-07-08T09:00:00Z",
+        "subjects": [
+          {
+            "id": "s1",
+            "type": "person"
+          }
+        ],
+        "holdings": [
+          {
+            "id": "h1",
+            "kind": "checking",
+            "nature": "asset",
+            "currency": "EUR"
+          }
+        ],
+        "ownership": [
+          {
+            "subjectId": "s1",
+            "holdingId": "h1",
+            "share": "-0.1"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ownership share as a percentage",
+      "section": "5.7",
+      "valid": false,
+      "expect": "/ownership/0/share",
+      "document": {
+        "assetnotation": "0.4.0",
+        "generatedAt": "2026-07-08T09:00:00Z",
+        "subjects": [
+          {
+            "id": "s1",
+            "type": "person"
+          }
+        ],
+        "holdings": [
+          {
+            "id": "h1",
+            "kind": "checking",
+            "nature": "asset",
+            "currency": "EUR"
+          }
+        ],
+        "ownership": [
+          {
+            "subjectId": "s1",
+            "holdingId": "h1",
+            "share": "50"
+          }
+        ]
+      }
+    },
+    {
+      "name": "valuation confidence above one",
+      "section": "5.5",
+      "valid": false,
+      "expect": "/valuations/0/confidence",
+      "document": {
+        "assetnotation": "0.4.0",
+        "generatedAt": "2026-07-08T09:00:00Z",
+        "holdings": [
+          {
+            "id": "h1",
+            "kind": "checking",
+            "nature": "asset",
+            "currency": "EUR"
+          }
+        ],
+        "valuations": [
+          {
+            "id": "v1",
+            "holdingId": "h1",
+            "asOf": "2026-06-30",
+            "value": {
+              "amount": "10.00",
+              "currency": "EUR"
+            },
+            "confidence": 1.5
+          }
+        ]
+      }
+    },
+    {
+      "name": "lower-case ISIN",
+      "section": "13",
+      "valid": false,
+      "expect": "/instruments/0/ids/isin",
+      "document": {
+        "assetnotation": "0.4.0",
+        "generatedAt": "2026-07-08T09:00:00Z",
+        "holdings": [
+          {
+            "id": "h1",
+            "kind": "checking",
+            "nature": "asset",
+            "currency": "EUR"
+          }
+        ],
+        "instruments": [
+          {
+            "id": "n1",
+            "kind": "security",
+            "ids": {
+              "isin": "ie00b4l5y983"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "BIC of the wrong length",
+      "section": "13",
+      "valid": false,
+      "expect": "/institutions/0/ids/bic",
+      "document": {
+        "assetnotation": "0.4.0",
+        "generatedAt": "2026-07-08T09:00:00Z",
+        "institutions": [
+          {
+            "id": "i1",
+            "ids": {
+              "bic": "EXAMFRP"
+            }
+          }
+        ],
+        "holdings": []
+      }
+    },
+    {
+      "name": "duplicate id within a collection",
+      "section": "4",
+      "valid": false,
+      "expect": "duplicate-id",
+      "document": {
+        "assetnotation": "0.4.0",
+        "generatedAt": "2026-07-08T09:00:00Z",
+        "holdings": [
+          {
+            "id": "h1",
+            "kind": "checking",
+            "nature": "asset",
+            "currency": "EUR"
+          },
+          {
+            "id": "h1",
+            "kind": "savings",
+            "nature": "asset",
+            "currency": "EUR"
+          }
+        ]
+      }
+    },
+    {
+      "name": "calendar date that does not exist",
+      "section": "3",
+      "valid": false,
+      "expect": "/valuations/0/asOf",
+      "document": {
+        "assetnotation": "0.4.0",
+        "generatedAt": "2026-07-08T09:00:00Z",
+        "holdings": [
+          {
+            "id": "h1",
+            "kind": "checking",
+            "nature": "asset",
+            "currency": "EUR"
+          }
+        ],
+        "valuations": [
+          {
+            "id": "v1",
+            "holdingId": "h1",
+            "asOf": "2026-02-30",
+            "value": {
+              "amount": "10.00",
+              "currency": "EUR"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "openedAt that does not exist",
+      "section": "3",
+      "valid": false,
+      "expect": "/holdings/0/openedAt",
+      "document": {
+        "assetnotation": "0.4.0",
+        "generatedAt": "2026-07-08T09:00:00Z",
+        "holdings": [
+          {
+            "id": "h1",
+            "kind": "checking",
+            "nature": "asset",
+            "currency": "EUR",
+            "openedAt": "2026-99-99"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ownership interval",
+      "section": "5.7",
+      "valid": true,
+      "document": {
+        "assetnotation": "0.4.0",
+        "generatedAt": "2026-07-08T09:00:00Z",
+        "holdings": [
+          {
+            "id": "h1",
+            "kind": "checking",
+            "nature": "asset",
+            "currency": "EUR"
+          }
+        ],
+        "subjects": [
+          {
+            "id": "s1",
+            "type": "person"
+          },
+          {
+            "id": "s2",
+            "type": "person"
+          }
+        ],
+        "ownership": [
+          {
+            "subjectId": "s1",
+            "holdingId": "h1",
+            "share": "1",
+            "until": "2026-01-01"
+          },
+          {
+            "subjectId": "s1",
+            "holdingId": "h1",
+            "share": "0.5",
+            "from": "2026-01-01"
+          },
+          {
+            "subjectId": "s2",
+            "holdingId": "h1",
+            "share": "0.5",
+            "from": "2026-01-01"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ownership interval bounds are calendar dates",
+      "section": "5.7",
+      "valid": false,
+      "expect": "/ownership/0/from",
+      "document": {
+        "assetnotation": "0.4.0",
+        "generatedAt": "2026-07-08T09:00:00Z",
+        "holdings": [
+          {
+            "id": "h1",
+            "kind": "checking",
+            "nature": "asset",
+            "currency": "EUR"
+          }
+        ],
+        "subjects": [
+          {
+            "id": "s1",
+            "type": "person"
+          }
+        ],
+        "ownership": [
+          {
+            "subjectId": "s1",
+            "holdingId": "h1",
+            "share": "1",
+            "from": "2026-01-01T00:00:00Z"
+          }
+        ]
+      }
+    },
+    {
+      "name": "overlapping ownership rows of one subject on one holding",
+      "section": "5.7",
+      "valid": false,
+      "expect": "ownership-overlap",
+      "document": {
+        "assetnotation": "0.4.0",
+        "generatedAt": "2026-07-08T09:00:00Z",
+        "holdings": [
+          {
+            "id": "h1",
+            "kind": "checking",
+            "nature": "asset",
+            "currency": "EUR"
+          }
+        ],
+        "subjects": [
+          {
+            "id": "s1",
+            "type": "person"
+          }
+        ],
+        "ownership": [
+          {
+            "subjectId": "s1",
+            "holdingId": "h1",
+            "share": "1",
+            "until": "2026-06-01"
+          },
+          {
+            "subjectId": "s1",
+            "holdingId": "h1",
+            "share": "0.5",
+            "from": "2026-01-01"
+          }
+        ]
+      }
+    },
+    {
+      "name": "parent chain that loops",
+      "section": "4",
+      "valid": false,
+      "expect": "parent-cycle",
+      "document": {
+        "assetnotation": "0.4.0",
+        "generatedAt": "2026-07-08T09:00:00Z",
+        "holdings": [
+          {
+            "id": "h1",
+            "kind": "brokerage",
+            "nature": "asset",
+            "parentId": "h2"
+          },
+          {
+            "id": "h2",
+            "kind": "brokerage",
+            "nature": "asset",
+            "parentId": "h1"
+          }
+        ]
+      }
+    },
+    {
+      "name": "holding that is its own parent",
+      "section": "4",
+      "valid": false,
+      "expect": "parent-cycle",
+      "document": {
+        "assetnotation": "0.4.0",
+        "generatedAt": "2026-07-08T09:00:00Z",
+        "holdings": [
+          {
+            "id": "h1",
+            "kind": "brokerage",
+            "nature": "asset",
+            "parentId": "h1"
+          }
+        ]
+      }
+    },
+    {
+      "name": "liability child of an asset parent",
+      "section": "6",
+      "valid": true,
+      "document": {
+        "assetnotation": "0.4.0",
+        "generatedAt": "2026-07-08T09:00:00Z",
+        "holdings": [
+          {
+            "id": "h1",
+            "kind": "brokerage",
+            "nature": "asset",
+            "currency": "EUR"
+          },
+          {
+            "id": "h2",
+            "kind": "loan",
+            "nature": "liability",
+            "currency": "EUR",
+            "parentId": "h1",
+            "label": "Margin loan"
+          }
+        ]
+      }
+    },
+    {
+      "name": "repayment signed on both legs",
+      "section": "5.6",
+      "valid": true,
+      "document": {
+        "assetnotation": "0.4.0",
+        "generatedAt": "2026-07-08T09:00:00Z",
+        "holdings": [
+          {
+            "id": "h1",
+            "kind": "checking",
+            "nature": "asset",
+            "currency": "EUR"
+          },
+          {
+            "id": "h4",
+            "kind": "mortgage",
+            "nature": "liability",
+            "currency": "EUR"
+          }
+        ],
+        "transactions": [
+          {
+            "id": "t1",
+            "holdingId": "h1",
+            "date": "2026-06-05",
+            "type": "transfer",
+            "amount": {
+              "amount": "-990.00",
+              "currency": "EUR"
+            },
+            "counterpartHoldingId": "h4",
+            "transferId": "x1"
+          },
+          {
+            "id": "t2",
+            "holdingId": "h4",
+            "date": "2026-06-05",
+            "type": "transfer",
+            "amount": {
+              "amount": "-990.00",
+              "currency": "EUR"
+            },
+            "counterpartHoldingId": "h1",
+            "transferId": "x1"
+          }
+        ]
+      }
+    }
+  ]
+}

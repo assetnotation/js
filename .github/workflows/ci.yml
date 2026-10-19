@@ -56,3 +56,4 @@ jobs:
         run: |
           diff -r schema /tmp/spec/schema
           diff -r examples /tmp/spec/examples
+          diff -r conformance /tmp/spec/tests/conformance
