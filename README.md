@@ -52,14 +52,17 @@ major.minor: a document says what it is and is judged against that. **Schemas
 ship inside the package**, so validation needs no network and no registry - the
 same property the format itself is asking for.
 
-On top of the schema, two document-level rules a JSON Schema cannot express:
+On top of the schema, the document-level rules a JSON Schema cannot express:
 
-| Situation                                | Verdict               |
-| ---------------------------------------- | --------------------- |
-| An id used twice in one collection       | **error**             |
-| A reference pointing at something absent | **note**, still valid |
+| Situation                                                             | Verdict               |
+| --------------------------------------------------------------------- | --------------------- |
+| An id used twice in one collection                                    | **error**             |
+| A chain of `parentId` that comes back on itself                       | **error**             |
+| Two ownership rows of one subject on one holding that overlap in time | **error**             |
+| A reference pointing at something absent                              | **note**, still valid |
+| Ownership shares of one holding summing above 1                       | **note**, still valid |
 
-The second one is deliberate and it is the interesting one. Any subset of a
+The unresolved reference is deliberate and it is the interesting one. Any subset of a
 valid document is itself valid, so a statement covering three accounts out of
 twelve, naming a bank it does not describe, is a legitimate partial disclosure -
 not a broken file. Reporting it as an error would forbid exactly the sharing the
@@ -67,6 +70,11 @@ format exists for.
 
 `validate()` never throws on a malformed document: reporting what is wrong is
 the job.
+
+The specification's conformance corpus (`conformance/`, one file per version,
+mirrored verbatim like the schemas) runs in the test suite: every case states
+the verdict this validator must reach, so the library and the specification
+cannot drift apart silently.
 
 ## API
 

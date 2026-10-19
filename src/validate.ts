@@ -153,30 +153,60 @@ function integrity(doc: AssetNotationDocument): { errors: string[]; notes: strin
 		ref('ownership', 'subjectId', o.subjectId, 'subjects');
 		ref('ownership', 'holdingId', o.holdingId, 'holdings');
 	}
-	notes.push(...parentCycles(doc), ...overSharedHoldings(doc));
+	errors.push(...parentCycles(doc), ...ownershipOverlaps(doc));
+	notes.push(...overSharedHoldings(doc));
 	return { errors, notes };
 }
 
-/** A holding whose chain of parents comes back to itself. The specification
- *  counts a container through its children, and such a chain never ends. */
+/** A holding whose chain of parents comes back to itself: an integrity error
+ *  (specification section 4), since the derivation walks the chain and a loop
+ *  has no root. */
 function parentCycles(doc: AssetNotationDocument): string[] {
 	const parentOf = new Map<string, string>();
 	for (const h of list(doc, 'holdings')) {
 		if (typeof h.id === 'string' && typeof h.parentId === 'string') parentOf.set(h.id, h.parentId);
 	}
-	const notes: string[] = [];
+	const errors: string[] = [];
 	for (const start of parentOf.keys()) {
 		const chain = [start];
 		for (let next = parentOf.get(start); next !== undefined; next = parentOf.get(next)) {
 			if (next === start) {
-				notes.push(`holding "${start}".parentId forms a cycle (${chain.join(' -> ')} -> ${start})`);
+				errors.push(`parent cycle: ${chain.join(' -> ')} -> ${start}`);
 				break;
 			}
 			if (chain.includes(next)) break; // the loop is elsewhere, reported from its own start
 			chain.push(next);
 		}
 	}
-	return notes;
+	return errors;
+}
+
+/** Two ownership rows of one subject on one holding whose intervals overlap
+ *  (specification section 5.7). A calendar date compares as text: YYYY-MM-DD
+ *  sorts as it dates. An absent `from` is since always, an absent `until` is
+ *  still holding. */
+function ownershipOverlaps(doc: AssetNotationDocument): string[] {
+	const rows = new Map<string, Record<string, unknown>[]>();
+	for (const o of list(doc, 'ownership')) {
+		if (typeof o.subjectId !== 'string' || typeof o.holdingId !== 'string') continue;
+		const key = `${o.subjectId}\u0000${o.holdingId}`;
+		rows.set(key, [...(rows.get(key) ?? []), o]);
+	}
+	const bound = (v: unknown): string => (typeof v === 'string' ? v : '');
+	const errors: string[] = [];
+	for (const rowsOfOne of rows.values()) {
+		const sorted = [...rowsOfOne].sort((a, b) => bound(a.from).localeCompare(bound(b.from)));
+		for (let i = 1; i < sorted.length; i++) {
+			const previous = sorted[i - 1];
+			const current = sorted[i];
+			if (previous.until === undefined || bound(current.from) < bound(previous.until)) {
+				errors.push(
+					`ownership of holding "${String(current.holdingId)}" by "${String(current.subjectId)}" overlaps: [${bound(previous.from)}, ${bound(previous.until)}) and [${bound(current.from)}, ${bound(current.until)})`
+				);
+			}
+		}
+	}
+	return errors;
 }
 
 const DECIMAL = /^\d+(\.\d+)?$/;

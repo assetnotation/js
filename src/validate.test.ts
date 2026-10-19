@@ -22,7 +22,7 @@ describe('the bundled schemas', () => {
 	it('ships every published version, so an older document still gets judged', () => {
 		const versions = supportedVersions();
 		expect(versions.length).toBeGreaterThanOrEqual(3);
-		expect(versions).toContain('0.3.0');
+		expect(versions).toContain('0.4.0');
 	});
 
 	it('lists them oldest first, in numeric order', () => {
@@ -50,7 +50,7 @@ describe('agreement with the specification examples', () => {
 	});
 });
 
-describe('what the document is told without being refused', () => {
+describe('the document-level rules', () => {
 	const doc = (body: Record<string, unknown>): Record<string, unknown> => ({
 		assetnotation: '0.3.0',
 		generatedAt: '2026-08-01T00:00:00Z',
@@ -58,9 +58,9 @@ describe('what the document is told without being refused', () => {
 		...body
 	});
 
-	it('names a chain of parents that comes back on itself', () => {
-		// The specification counts a container through its children; a loop
-		// never ends. Noted once, from its own start, not once per member.
+	it('refuses a chain of parents that comes back on itself', () => {
+		// The specification walks the chain to derive a total; a loop has no
+		// root. An error, reported from each member's own start.
 		const result = validate(
 			doc({
 				holdings: [
@@ -70,11 +70,39 @@ describe('what the document is told without being refused', () => {
 				]
 			})
 		);
-		expect(result.valid).toBe(true);
-		expect(result.notes).toEqual([
-			'holding "h1".parentId forms a cycle (h1 -> h2 -> h1)',
-			'holding "h2".parentId forms a cycle (h2 -> h1 -> h2)'
+		expect(result.valid).toBe(false);
+		expect(result.errors).toEqual(['parent cycle: h1 -> h2 -> h1', 'parent cycle: h2 -> h1 -> h2']);
+	});
+
+	it('refuses two ownership rows of one subject on one holding that overlap in time', () => {
+		const subjects = [{ id: 's1', type: 'person' }];
+		const overlapping = validate(
+			doc({
+				assetnotation: '0.4.0',
+				subjects,
+				ownership: [
+					{ subjectId: 's1', holdingId: 'h1', share: '1', until: '2026-06-01' },
+					{ subjectId: 's1', holdingId: 'h1', share: '0.5', from: '2026-01-01' }
+				]
+			})
+		);
+		expect(overlapping.valid).toBe(false);
+		expect(overlapping.errors).toEqual([
+			'ownership of holding "h1" by "s1" overlaps: [, 2026-06-01) and [2026-01-01, )'
 		]);
+
+		// Closed on the day the next one opens: history, not an overlap.
+		const succession = validate(
+			doc({
+				assetnotation: '0.4.0',
+				subjects,
+				ownership: [
+					{ subjectId: 's1', holdingId: 'h1', share: '1', until: '2026-01-01' },
+					{ subjectId: 's1', holdingId: 'h1', share: '0.5', from: '2026-01-01' }
+				]
+			})
+		);
+		expect(succession.errors).toEqual([]);
 	});
 
 	it('names a holding owned more than once over, exactly and never by a float', () => {
@@ -107,6 +135,51 @@ describe('what the document is told without being refused', () => {
 		);
 		expect(whole.notes).toEqual([]);
 	});
+});
+
+/** The document-level invariants a conformance case may expect, and the
+ *  prefix of the error each one raises here. */
+const INVARIANTS: Record<string, string> = {
+	'duplicate-id': 'duplicate id',
+	'parent-cycle': 'parent cycle',
+	'ownership-overlap': 'ownership of holding'
+};
+
+interface ConformanceCase {
+	name: string;
+	valid: boolean;
+	expect?: string;
+	document: unknown;
+}
+
+describe('the conformance corpus of the specification', () => {
+	const dir = join(import.meta.dirname, '..', 'conformance');
+	const suites = readdirSync(dir)
+		.filter((f) => f.endsWith('.json'))
+		.map((f) => ({
+			file: f,
+			cases: (JSON.parse(readFileSync(join(dir, f), 'utf8')) as { cases: ConformanceCase[] }).cases
+		}));
+
+	it('is there, and large enough to mean something', () => {
+		expect(suites.length).toBeGreaterThan(0);
+		expect(suites.reduce((n, s) => n + s.cases.length, 0)).toBeGreaterThanOrEqual(45);
+	});
+
+	it.each(suites.flatMap((s) => s.cases.map((c) => [`${s.file}: ${c.name}`, c] as const)))(
+		'reaches the stated verdict on %s',
+		(_, c) => {
+			const result = validate(c.document);
+			if (c.valid) {
+				expect(result.errors).toEqual([]);
+				return;
+			}
+			expect(result.valid).toBe(false);
+			const expected = c.expect ?? '';
+			const prefix = expected in INVARIANTS ? INVARIANTS[expected] : `${expected || '/'} `;
+			expect(result.errors.some((e) => e.startsWith(prefix))).toBe(true);
+		}
+	);
 });
 
 describe('what makes a document invalid', () => {
