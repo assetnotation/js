@@ -6,7 +6,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { fromCsv, toCsv } from './csv.js';
-import { validate } from './validate.js';
+import { validate, supportedVersions } from './validate.js';
 
 const STAMP = '2026-08-01T00:00:00Z';
 
@@ -99,6 +99,52 @@ describe('reading a spreadsheet as people actually save it', () => {
 			generatedAt: STAMP
 		});
 		expect(validate(contradicted).valid).toBe(false);
+	});
+
+	it('reads the dates a spreadsheet writes, day first where the columns say so', () => {
+		// A French or German sheet dates a row "24/06/2026" or "24.06.2026", and
+		// the row used to reach the document as written, where the schema
+		// refuses it. When both readings fit, the delimiter decides, as for an
+		// amount: a semicolon comes from a sheet that writes the day first.
+		const european = fromCsv(
+			'label;amount;asOf\nA;1;24/06/2026\nB;2;24.06.2026\nC;3;3/6/2026\nD;4;2026-06-24\n',
+			{ generatedAt: STAMP }
+		);
+		expect((european.valuations as Record<string, unknown>[]).map((v) => v.asOf)).toEqual([
+			'2026-06-24',
+			'2026-06-24',
+			'2026-06-03',
+			'2026-06-24'
+		]);
+		expect(validate(european).valid).toBe(true);
+
+		const american = fromCsv('label,amount,asOf\nA,1,06/24/2026\nB,2,3/6/2026\nC,3,24/06/2026\n', {
+			generatedAt: STAMP
+		});
+		expect((american.valuations as Record<string, unknown>[]).map((v) => v.asOf)).toEqual([
+			'2026-06-24',
+			'2026-03-06',
+			'2026-06-24'
+		]);
+
+		// A date in no shape this reads is kept as written, for validate to refuse.
+		const odd = fromCsv('label;amount;asOf\nA;1;June 2026\n', { generatedAt: STAMP });
+		expect((odd.valuations as Record<string, unknown>[])[0].asOf).toBe('June 2026');
+		expect(validate(odd).valid).toBe(false);
+	});
+
+	it('reads a currency column that holds a sign rather than a code', () => {
+		const doc = fromCsv('label;currency;amount\nA;\u20AC;10\nB;usd;20\n', { generatedAt: STAMP });
+		expect((doc.holdings as Record<string, unknown>[]).map((h) => h.currency)).toEqual([
+			'EUR',
+			'USD'
+		]);
+		expect(validate(doc).valid).toBe(true);
+	});
+
+	it('declares the newest version this build validates', () => {
+		const doc = fromCsv('label;amount\nA;1\n', { generatedAt: STAMP });
+		expect(doc.assetnotation).toBe(supportedVersions().at(-1));
 	});
 
 	it('keeps an amount as a string, so no float rounds a balance', () => {

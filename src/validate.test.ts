@@ -24,6 +24,15 @@ describe('the bundled schemas', () => {
 		expect(versions.length).toBeGreaterThanOrEqual(3);
 		expect(versions).toContain('0.3.0');
 	});
+
+	it('lists them oldest first, in numeric order', () => {
+		const versions = supportedVersions();
+		const numeric = versions.map((v) => v.split('.').map(Number));
+		for (let i = 1; i < numeric.length; i++) {
+			const [a, b] = [numeric[i - 1], numeric[i]];
+			expect(a[0] < b[0] || (a[0] === b[0] && a[1] < b[1])).toBe(true);
+		}
+	});
 });
 
 describe('agreement with the specification examples', () => {
@@ -38,6 +47,65 @@ describe('agreement with the specification examples', () => {
 		const result = validate(doc);
 		expect(result.errors).toEqual([]);
 		expect(result.valid).toBe(true);
+	});
+});
+
+describe('what the document is told without being refused', () => {
+	const doc = (body: Record<string, unknown>): Record<string, unknown> => ({
+		assetnotation: '0.3.0',
+		generatedAt: '2026-08-01T00:00:00Z',
+		holdings: [{ id: 'h1', kind: 'other', nature: 'asset' }],
+		...body
+	});
+
+	it('names a chain of parents that comes back on itself', () => {
+		// The specification counts a container through its children; a loop
+		// never ends. Noted once, from its own start, not once per member.
+		const result = validate(
+			doc({
+				holdings: [
+					{ id: 'h1', kind: 'brokerage', nature: 'asset', parentId: 'h2' },
+					{ id: 'h2', kind: 'brokerage', nature: 'asset', parentId: 'h1' },
+					{ id: 'h3', kind: 'brokerage', nature: 'asset', parentId: 'h1' }
+				]
+			})
+		);
+		expect(result.valid).toBe(true);
+		expect(result.notes).toEqual([
+			'holding "h1".parentId forms a cycle (h1 -> h2 -> h1)',
+			'holding "h2".parentId forms a cycle (h2 -> h1 -> h2)'
+		]);
+	});
+
+	it('names a holding owned more than once over, exactly and never by a float', () => {
+		const result = validate(
+			doc({
+				subjects: [
+					{ id: 's1', type: 'person' },
+					{ id: 's2', type: 'person' }
+				],
+				ownership: [
+					{ subjectId: 's1', holdingId: 'h1', share: '0.7' },
+					{ subjectId: 's2', holdingId: 'h1', share: '0.30000001' }
+				]
+			})
+		);
+		expect(result.valid).toBe(true);
+		expect(result.notes).toEqual(['ownership of holding "h1" sums to 0.7 + 0.30000001, above 1']);
+
+		const whole = validate(
+			doc({
+				subjects: [
+					{ id: 's1', type: 'person' },
+					{ id: 's2', type: 'person' }
+				],
+				ownership: [
+					{ subjectId: 's1', holdingId: 'h1', share: '0.7' },
+					{ subjectId: 's2', holdingId: 'h1', share: '0.3' }
+				]
+			})
+		);
+		expect(whole.notes).toEqual([]);
 	});
 });
 

@@ -16,7 +16,7 @@
  * delimiter that was found.
  */
 
-import type { AssetNotationDocument } from './validate.js';
+import { supportedVersions, type AssetNotationDocument } from './validate.js';
 
 /** Columns, in the order they are written. `institution` carries a NAME, not an
  *  id: a spreadsheet has "Crédit Mutuel" in it, never "i1". */
@@ -134,6 +134,12 @@ function amountOf(raw: string, delimiter: string): string {
  *  can only mean. The yen sign is absent on purpose: it is also the yuan's. */
 const SIGNS: Readonly<Record<string, string>> = { '\u20AC': 'EUR', '\u00A3': 'GBP', $: 'USD' };
 
+/** The currency a column names: an ISO code in any case, or one of the signs
+ *  a spreadsheet writes in its own currency column. */
+function currencyOf(column: string): string {
+	return SIGNS[column] ?? column.toUpperCase();
+}
+
 /** A sign or an ISO code printed at one end of an amount: `12345,67\u20AC`,
  *  `$1,234.50`, `EUR 1 000`. Spaces are already gone when this runs. */
 function currencyMark(cleaned: string): { mark: string; currency: string } | undefined {
@@ -172,6 +178,23 @@ function amountAndCurrency(
 		? cleaned.slice(found.mark.length)
 		: cleaned.slice(0, -found.mark.length);
 	return { amount: amountOf(bare, delimiter), currency };
+}
+
+/**
+ * A date as the format wants it, `YYYY-MM-DD`, from the shapes a spreadsheet
+ * writes. An ISO date passes through. `24/06/2026` and `24.06.2026` are read
+ * day first, `06/24/2026` month first. When both readings are possible, the
+ * delimiter decides, as it does for an amount: a semicolon comes from a
+ * European spreadsheet, which writes the day first. Anything else is kept as
+ * written, for `validate` to refuse.
+ */
+function dateOf(raw: string, delimiter: string): string {
+	const parts = /^(\d{1,2})[/.](\d{1,2})[/.](\d{4})$/.exec(raw);
+	if (!parts) return raw;
+	const [, first, second, year] = parts;
+	const dayFirst = Number(first) > 12 || (Number(second) <= 12 && delimiter !== ',');
+	const [day, month] = dayFirst ? [first, second] : [second, first];
+	return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
 }
 
 /** The most recent valuation of a holding, or undefined when it has none. */
@@ -280,7 +303,7 @@ export function fromCsv(text: string, options: FromCsvOptions = {}): AssetNotati
 		const label = at(row, 'label');
 		const { amount, currency } = amountAndCurrency(
 			at(row, 'amount'),
-			at(row, 'currency').toUpperCase(),
+			currencyOf(at(row, 'currency')),
 			delimiter,
 			options.baseCurrency
 		);
@@ -312,7 +335,7 @@ export function fromCsv(text: string, options: FromCsvOptions = {}): AssetNotati
 			const valuation: Record<string, unknown> = {
 				id: `v${valuations.length + 1}`,
 				holdingId: id,
-				asOf: at(row, 'asOf') || at(row, 'asof') || generatedAt.slice(0, 10),
+				asOf: dateOf(at(row, 'asof'), delimiter) || generatedAt.slice(0, 10),
 				value: { amount, currency }
 			};
 			const source = at(row, 'source');
@@ -322,7 +345,7 @@ export function fromCsv(text: string, options: FromCsvOptions = {}): AssetNotati
 	}
 
 	const doc: AssetNotationDocument = {
-		assetnotation: options.version ?? '0.3.0',
+		assetnotation: options.version ?? supportedVersions().at(-1),
 		generatedAt,
 		generator: { name: 'asset-notation', version: 'js' }
 	};
