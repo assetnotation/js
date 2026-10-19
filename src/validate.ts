@@ -66,10 +66,17 @@ function schemaRoot(): string {
 
 const validators = new Map<string, { version: string; validate: ValidateFunction }>();
 
+/** Numeric order of version folders, so "0.10.0" follows "0.9.0" and the last
+ *  one is the newest. */
+function byVersion(a: string, b: string): number {
+	const [x, y] = [a, b].map((v) => v.split('.').map(Number));
+	return x[0] - y[0] || x[1] - y[1] || (x[2] ?? 0) - (y[2] ?? 0);
+}
+
 function load(): Map<string, { version: string; validate: ValidateFunction }> {
 	if (validators.size > 0) return validators;
 	const root = schemaRoot();
-	for (const version of readdirSync(root).sort()) {
+	for (const version of readdirSync(root).sort(byVersion)) {
 		const file = join(root, version, 'asset-notation.schema.json');
 		const schema = JSON.parse(readFileSync(file, 'utf8')) as object;
 		const ajv = new Ajv2020({ allErrors: true, strict: false });
@@ -82,7 +89,7 @@ function load(): Map<string, { version: string; validate: ValidateFunction }> {
 	return validators;
 }
 
-/** Every schema version this build can judge a document against. */
+/** Every schema version this build can judge a document against, oldest first. */
 export function supportedVersions(): string[] {
 	return [...load().values()].map((v) => v.version);
 }
@@ -146,7 +153,64 @@ function integrity(doc: AssetNotationDocument): { errors: string[]; notes: strin
 		ref('ownership', 'subjectId', o.subjectId, 'subjects');
 		ref('ownership', 'holdingId', o.holdingId, 'holdings');
 	}
+	notes.push(...parentCycles(doc), ...overSharedHoldings(doc));
 	return { errors, notes };
+}
+
+/** A holding whose chain of parents comes back to itself. The specification
+ *  counts a container through its children, and such a chain never ends. */
+function parentCycles(doc: AssetNotationDocument): string[] {
+	const parentOf = new Map<string, string>();
+	for (const h of list(doc, 'holdings')) {
+		if (typeof h.id === 'string' && typeof h.parentId === 'string') parentOf.set(h.id, h.parentId);
+	}
+	const notes: string[] = [];
+	for (const start of parentOf.keys()) {
+		const chain = [start];
+		for (let next = parentOf.get(start); next !== undefined; next = parentOf.get(next)) {
+			if (next === start) {
+				notes.push(`holding "${start}".parentId forms a cycle (${chain.join(' -> ')} -> ${start})`);
+				break;
+			}
+			if (chain.includes(next)) break; // the loop is elsewhere, reported from its own start
+			chain.push(next);
+		}
+	}
+	return notes;
+}
+
+const DECIMAL = /^[0-9]+(\.[0-9]+)?$/;
+
+/** The exact sum of decimal strings, scaled to integers on the longest
+ *  fraction: no float ever rounds an ownership share. */
+function sumOfDecimals(values: string[]): { total: bigint; scale: number } {
+	const scale = Math.max(0, ...values.map((v) => v.split('.')[1]?.length ?? 0));
+	const total = values.reduce((acc, v) => {
+		const [whole, fraction = ''] = v.split('.');
+		return acc + BigInt(whole + fraction.padEnd(scale, '0'));
+	}, 0n);
+	return { total, scale };
+}
+
+/** A holding whose ownership shares add up to more than the whole of it. The
+ *  specification says they SHOULD sum to at most 1; a consumer would count
+ *  the excess in a household total. */
+function overSharedHoldings(doc: AssetNotationDocument): string[] {
+	const sharesOf = new Map<string, string[]>();
+	for (const o of list(doc, 'ownership')) {
+		if (typeof o.holdingId !== 'string' || typeof o.share !== 'string' || !DECIMAL.test(o.share)) {
+			continue; // shape is the schema's job
+		}
+		sharesOf.set(o.holdingId, [...(sharesOf.get(o.holdingId) ?? []), o.share]);
+	}
+	const notes: string[] = [];
+	for (const [holdingId, shares] of sharesOf) {
+		const { total, scale } = sumOfDecimals(shares);
+		if (total > 10n ** BigInt(scale)) {
+			notes.push(`ownership of holding "${holdingId}" sums to ${shares.join(' + ')}, above 1`);
+		}
+	}
+	return notes;
 }
 
 /**

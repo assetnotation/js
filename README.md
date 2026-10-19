@@ -41,7 +41,9 @@ both are handled rather than documented away:
 - **Amounts stay strings**, all the way through. No float ever rounds a balance.
 
 Thousands grouping is dropped, including the no-break spaces a spreadsheet
-writes (`1 234,56` and `1,234.56` both land on `1234.56`).
+writes (`1 234,56` and `1,234.56` both land on `1234.56`). A date is read the
+same way: `24/06/2026` and `24.06.2026` day first, `06/24/2026` month first, and
+when both fit, the delimiter decides.
 
 ## Validating
 

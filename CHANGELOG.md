@@ -2,6 +2,29 @@
 
 ## [Unreleased]
 
+## [0.1.4] - 2026-10-19
+
+### Fixed
+
+- `fromCsv`: a date written the way a French, German or Spanish spreadsheet
+  writes it - `24/06/2026`, `24.06.2026` - reached the document as written,
+  where the schema refuses it. It is now read day first; `06/24/2026` month
+  first; when both fit, the delimiter decides, as it does for an amount.
+- `fromCsv`: a currency column holding a sign (`€`, `$`, `£`) rather than a
+  code made the row invalid; the sign is now read as its code.
+- `fromCsv`: the version declared by default was a fixed `0.3.0`; it is now
+  the newest schema the build ships, as documented.
+- CLI: a file that is not JSON, an empty spreadsheet or an unclosed quote
+  ended in a stack trace. Each is now one `error` line on stderr and exit
+  code 1, as the other diagnostics are.
+
+### Added
+
+- `validate` notes, on a document that stays valid: a chain of `parentId`
+  that comes back on itself, and a holding whose ownership shares sum to more
+  than 1 (summed exactly, never as floats).
+- `supportedVersions()` lists versions in numeric order, oldest first.
+
 ## [0.1.3] - 2026-10-18
 
 ### Fixed
