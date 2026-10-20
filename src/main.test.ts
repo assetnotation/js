@@ -72,6 +72,17 @@ describe('the command line', () => {
 		expect(doc.valuations[0].asOf).toBe('2026-06-24');
 	});
 
+	it('refuses to export an invalid document: 1, the reasons, and no CSV', () => {
+		const path = file(
+			'bad-holdings.json',
+			'{"assetnotation":"0.3.0","generatedAt":"2026-08-01T00:00:00Z","holdings":{}}'
+		);
+		const r = cli('to-csv', path);
+		expect(r.code).toBe(1);
+		expect(r.out).toBe('');
+		expect(r.err).toMatch(/^error /);
+	});
+
 	it('answers 2 and the usage when the command is wrong', () => {
 		expect(cli().code).toBe(2);
 		expect(cli('frobnicate', 'x').code).toBe(2);

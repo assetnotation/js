@@ -4,6 +4,12 @@
 
 ### Fixed
 
+- `to-csv`: the document is validated before it is written. One whose
+  `holdings` is not a list used to export a header alone and exit 0; it now
+  prints the reasons, writes nothing and exits 1.
+- `fromCsv`: a header that names a known column twice is refused, instead of
+  reading the first and dropping the second unseen.
+
 - `mergeCsv` (`import_csv`): a row that matches an existing holding no longer
   overwrites the fields its sheet has no column for. Re-importing a debt with
   only `label` and `amount` used to turn it into an asset in EUR.

@@ -287,6 +287,12 @@ describe('writing a spreadsheet', () => {
 		);
 	});
 
+	it('refuses a header that names a column twice', () => {
+		expect(() => fromCsv('label;amount;amount\nSavings;12;13\n', { generatedAt: STAMP })).toThrow(
+			/names the column "amount" twice/
+		);
+	});
+
 	it('refuses a header with neither a label nor an amount column', () => {
 		expect(() => fromCsv('libelle;montant\nCompte;12\n', { generatedAt: STAMP })).toThrow(
 			/neither a label nor an amount/

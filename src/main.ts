@@ -76,7 +76,13 @@ const COMMANDS: Record<string, Command> = {
 		return 0;
 	},
 	'to-csv'(file, io) {
-		io.stdout.write(toCsv(parse(read(file), file ?? '') as Record<string, unknown>));
+		const doc = parse(read(file), file ?? '') as Record<string, unknown>;
+		// Judged before it is written: `holdings` given as an object exported a
+		// header alone and exited 0, an empty portfolio instead of an error.
+		const result = validate(doc);
+		for (const error of result.errors) io.stderr.write(`error  ${error}\n`);
+		if (!result.valid) return 1;
+		io.stdout.write(toCsv(doc));
 		return 0;
 	},
 	'from-csv'(file, io) {
