@@ -140,9 +140,25 @@ class WealthFile {
 		return parsed as AssetNotationDocument;
 	}
 
-	/** The document, or a fresh one when the file is not there yet. */
+	/**
+	 * The document, refused when it does not validate: a total or a change
+	 * computed over a malformed `holdings` would read it as empty, and the
+	 * write would then replace what the file held with that emptiness.
+	 */
+	readValid(): AssetNotationDocument {
+		const doc = this.read();
+		const result = validate(doc);
+		if (!result.valid)
+			throw new Refusal(
+				`${this.path} is not a valid document; the validate tool lists why, nothing was read or changed`,
+				result.errors
+			);
+		return doc;
+	}
+
+	/** The valid document, or a fresh one when the file is not there yet. */
 	readOrEmpty(): AssetNotationDocument {
-		return this.exists() ? this.read() : emptyDocument(this.now());
+		return this.exists() ? this.readValid() : emptyDocument(this.now());
 	}
 
 	/** Validate, then write the whole file: two-space indent, one trailing newline. */
@@ -185,7 +201,7 @@ export function wealthTools(
 				'What the person is worth: assets minus liabilities, per currency, from the latest valuation of each holding, summed exactly. Also tells the date of the oldest valuation used and the holdings that have none. Call it when asked for net worth, total wealth or a summary.',
 			inputSchema: {},
 			readOnly: true,
-			run: () => netWorth(file.read())
+			run: () => netWorth(file.readValid())
 		},
 		{
 			name: 'list_holdings',
@@ -193,7 +209,7 @@ export function wealthTools(
 				'List every holding with its institution name and latest valuation. Call it before updating or valuing a holding, to find its id.',
 			inputSchema: {},
 			readOnly: true,
-			run: () => listHoldings(file.read())
+			run: () => listHoldings(file.readValid())
 		},
 		{
 			name: 'upsert_holding',
@@ -218,7 +234,7 @@ export function wealthTools(
 			readOnly: false,
 			run: (args) => {
 				const { doc, valuation } = addValuation(
-					file.read(),
+					file.readValid(),
 					args as unknown as Parameters<typeof addValuation>[1]
 				);
 				file.write(doc);

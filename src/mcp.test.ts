@@ -306,6 +306,40 @@ describe('the MCP tools', () => {
 		expect(stored().holdings).toEqual([
 			{ id: 'h1', kind: 'loan', nature: 'liability', currency: 'USD', label: 'Loan' }
 		]);
+		// The amount is the loan's, so it is in the loan's currency, not the converter's EUR.
+		expect(stored().valuations).toEqual([
+			{ id: 'v1', holdingId: 'h1', asOf: '2026-10-18', value: { amount: '90000', currency: 'USD' } }
+		]);
+	});
+
+	it('import_csv keeps a currency the row states, by column or by sign', () => {
+		call('upsert_holding', { id: 'h1', label: 'Broker', currency: 'USD' });
+		call('import_csv', { csv: 'label;amount;asOf\nBroker;100 \u20AC;2026-10-18\n' });
+		call('import_csv', { csv: 'label;amount;asOf;currency\nBroker;200;2026-10-19;GBP\n' });
+		const values = (stored().valuations as { value: { currency: string } }[]).map(
+			(v) => v.value.currency
+		);
+		expect(values).toEqual(['EUR', 'GBP']);
+	});
+
+	it('import_csv refuses one id given to two holdings, and a row it could only guess', () => {
+		expect(
+			refusal('import_csv', { csv: 'id;label;amount\na1;Livret;100\na1;PEA;200\n' }).message
+		).toBe('the CSV gives the id "a1" to two different holdings');
+		call('upsert_holding', { id: 'a1', label: 'Livret' });
+		call('upsert_holding', { id: 'a2', label: 'PEA' });
+		expect(refusal('import_csv', { csv: 'id;label;amount\na2;Livret;100\n' }).message).toBe(
+			'the CSV row with id "a2" names another holding than "PEA"'
+		);
+		call('upsert_holding', { id: 'a3', label: 'Livret' });
+		expect(refusal('import_csv', { csv: 'label;amount\nLivret;100\n' }).message).toBe(
+			'2 holdings are labelled "Livret"; give the row an id or an institution'
+		);
+		// A history, one row per date under one id, is one holding.
+		call('import_csv', {
+			csv: 'id;label;amount;asOf\na2;PEA;100;2026-09-30\na2;PEA;110;2026-10-18\n'
+		});
+		expect((stored().valuations as unknown[]).length).toBe(2);
 	});
 
 	it('import_csv matches a label only within the same institution', () => {
@@ -324,6 +358,22 @@ describe('the MCP tools', () => {
 		const before = readFileSync(path, 'utf8');
 		mkdirSync(`${path}.${process.pid}.tmp`);
 		expect(() => call('upsert_holding', { id: 'h1', label: 'Livret A' })).toThrow();
+		expect(readFileSync(path, 'utf8')).toBe(before);
+	});
+
+	it('a document that does not validate is neither totalled nor changed', () => {
+		call('upsert_holding', { id: 'h1', label: 'Livret' });
+		const broken = { ...stored(), holdings: 'not a list' };
+		writeFileSync(path, JSON.stringify(broken));
+		const before = readFileSync(path, 'utf8');
+		for (const [name, args] of [
+			['net_worth', {}],
+			['list_holdings', {}],
+			['upsert_holding', { id: 'h2', label: 'PEA' }],
+			['add_valuation', { holdingId: 'h1', asOf: '2026-10-18', amount: '1', currency: 'EUR' }],
+			['import_csv', { csv: 'label;amount\nPEA;1\n' }]
+		] as const)
+			expect(refusal(name, args).message).toMatch(/is not a valid document/);
 		expect(readFileSync(path, 'utf8')).toBe(before);
 	});
 
