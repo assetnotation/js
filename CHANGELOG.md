@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [0.1.6] - 2026-10-22
 
 ### Fixed
 
@@ -30,6 +30,8 @@
   empty, and the next write replaced it with that emptiness.
 
 ## [0.1.5] - 2026-10-20
+
+Never published to npm: everything below ships in 0.1.6.
 
 ### Added
 
