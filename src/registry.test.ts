@@ -32,4 +32,9 @@ describe('the MCP registry entry', () => {
 			})
 		]);
 	});
+
+	it('fits the description the registry accepts', () => {
+		// The registry answers 422 above 100 characters, and only at publish time.
+		expect(String(server.description).length).toBeLessThanOrEqual(100);
+	});
 });

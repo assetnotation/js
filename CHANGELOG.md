@@ -1,5 +1,12 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+
+- `server.json`: the description fits the MCP registry's 100 characters. The
+  registry refused 0.1.6 with a 422, so the server entry is not listed yet.
+
 ## [0.1.6] - 2026-10-22
 
 ### Fixed
