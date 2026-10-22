@@ -19,6 +19,15 @@
   instead of reading `1234,56` under a comma header as `1234`.
 - MCP server: a write goes to a file beside the document, then replaces it, so
   a failed write leaves the previous document whole.
+- `mergeCsv` (`import_csv`): a row that names no currency, by column or by
+  sign, takes the currency of the holding it lands on. A USD account
+  re-imported with only `label` and `amount` used to receive a EUR valuation.
+- `mergeCsv`: one id given to two different holdings, an id the sheet wrote
+  that names another holding, and a label shared by several holdings are
+  refused, instead of filing the value on the first match.
+- MCP server: `net_worth`, `list_holdings` and every write refuse a stored
+  document that does not validate. A malformed `holdings` used to total as
+  empty, and the next write replaced it with that emptiness.
 
 ## [0.1.5] - 2026-10-20
 

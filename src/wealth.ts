@@ -246,7 +246,12 @@ export function mergeCsv(
 	csv: string,
 	options: FromCsvOptions
 ): { doc: AssetNotationDocument; holdingIds: string[]; valuations: number } {
-	const imported = fromCsv(csv, options);
+	// Read with the ISO code for "no currency" as the base: a row that names
+	// none, by column or by sign, then says so, and takes the currency of the
+	// holding it lands on instead of the converter's EUR.
+	const imported = fromCsv(csv, { ...options, baseCurrency: UNSTATED });
+	refuseAmbiguousIds(imported);
+	const fallback = options.baseCurrency ?? text(doc.baseCurrency) ?? 'EUR';
 	const columns = new Set(csvColumns(csv, options.delimiter));
 	const institutionNames = new Map(
 		entities(imported, 'institutions').map((i) => [i.id, String(i.name)])
@@ -254,16 +259,19 @@ export function mergeCsv(
 	const holdingIds = new Map<string, string>();
 	let next = doc;
 
-	for (const h of entities(imported, 'holdings')) {
+	for (const [index, h] of entities(imported, 'holdings').entries()) {
 		const { institutionId: importedInstitution, ...fields } = h;
 		const institution = institutionNames.get(importedInstitution);
-		const id = targetHoldingId(next, h, institution);
+		// fromCsv mints `h<row>` for a row whose id cell is empty.
+		const idGiven = columns.has('id') && h.id !== `h${String(index + 1)}`;
+		const id = targetHoldingId(next, h, institution, idGiven);
 		// On a holding that exists, a column the sheet does not have says nothing:
 		// the converter's defaults (an `other` asset in EUR) must not turn a debt
 		// into an asset.
 		if (entities(next, 'holdings').some((existing) => existing.id === id)) {
 			for (const field of DEFAULTED_FIELDS) if (!columns.has(field)) delete fields[field];
 		}
+		if (fields.currency === UNSTATED) fields.currency = fallback;
 		const input: HoldingInput = { ...(fields as HoldingInput), id, institution };
 		const result = upsertHolding(next, input);
 		next = result.doc;
@@ -273,11 +281,16 @@ export function mergeCsv(
 	let valuations = 0;
 	for (const v of entities(imported, 'valuations')) {
 		const value = v.value as Entity;
+		const holdingId = holdingIds.get(String(v.holdingId)) ?? String(v.holdingId);
+		const holding = entities(next, 'holdings').find((h) => h.id === holdingId);
 		const result = addValuation(next, {
-			holdingId: holdingIds.get(String(v.holdingId)) ?? String(v.holdingId),
+			holdingId,
 			asOf: String(v.asOf),
 			amount: String(value.amount),
-			currency: String(value.currency),
+			currency:
+				value.currency === UNSTATED
+					? (text(holding?.currency) ?? fallback)
+					: String(value.currency),
 			source: text(v.source)
 		});
 		next = result.doc;
@@ -286,10 +299,31 @@ export function mergeCsv(
 	return { doc: next, holdingIds: [...new Set(holdingIds.values())], valuations };
 }
 
+/** ISO 4217 for "no currency": what a row that names none is read as. */
+const UNSTATED = 'XXX';
+
+/**
+ * Two rows may share an id when they are the same holding (its history, one
+ * row per date); under two labels or two institutions, the id says nothing
+ * about which holding a valuation belongs to, and choosing would misfile money.
+ */
+function refuseAmbiguousIds(imported: AssetNotationDocument): void {
+	const seen = new Map<string, Entity>();
+	for (const h of entities(imported, 'holdings')) {
+		const first = seen.get(String(h.id));
+		if (first === undefined) seen.set(String(h.id), h);
+		else if (first.label !== h.label || first.institutionId !== h.institutionId)
+			throw new Error(
+				`asset-notation: the CSV gives the id "${String(h.id)}" to two different holdings`
+			);
+	}
+}
+
 function targetHoldingId(
 	doc: AssetNotationDocument,
 	imported: Entity,
-	institution: string | undefined
+	institution: string | undefined,
+	idGiven: boolean
 ): string {
 	const holdings = entities(doc, 'holdings');
 	const names = new Map(entities(doc, 'institutions').map((i) => [i.id, String(i.name)]));
@@ -306,10 +340,20 @@ function targetHoldingId(
 		sameInstitution(sameId)
 	)
 		return String(sameId.id);
+	// An id the sheet WROTE names one holding; under another label it is not a
+	// coincidence of minted ids but a contradiction, and a guess would misfile money.
+	if (sameId && idGiven)
+		throw new Error(
+			`asset-notation: the CSV row with id "${String(imported.id)}" names another holding than "${String(sameId.label)}"`
+		);
 	const sameLabel =
 		imported.label === undefined
-			? undefined
-			: holdings.find((h) => h.label === imported.label && sameInstitution(h));
-	if (sameLabel) return String(sameLabel.id);
+			? []
+			: holdings.filter((h) => h.label === imported.label && sameInstitution(h));
+	if (sameLabel.length > 1)
+		throw new Error(
+			`asset-notation: ${sameLabel.length} holdings are labelled "${String(imported.label)}"; give the row an id or an institution`
+		);
+	if (sameLabel.length === 1) return String(sameLabel[0].id);
 	return sameId ? nextId(doc, 'holdings', 'h') : String(imported.id);
 }
