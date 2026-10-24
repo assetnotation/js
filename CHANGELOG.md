@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.1.7] - 2026-10-24
+
 ### Fixed
 
 - `server.json`: the description fits the MCP registry's 100 characters. The
