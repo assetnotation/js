@@ -6,6 +6,9 @@
 
 - `server.json`: the description fits the MCP registry's 100 characters. The
   registry refused 0.1.6 with a 422, so the server entry is not listed yet.
+- MCP server: a tool that changes the file refuses to write when another
+  process saved the file after this one read it, instead of erasing that
+  change. Nothing is written; running the tool again reads the new file.
 
 ## [0.1.6] - 2026-10-22
 

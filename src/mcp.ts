@@ -13,7 +13,14 @@
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
+import {
+	existsSync,
+	mkdirSync,
+	readFileSync,
+	renameSync,
+	unlinkSync,
+	writeFileSync
+} from 'node:fs';
 import { dirname } from 'node:path';
 import type { Readable, Writable } from 'node:stream';
 import { z } from 'zod';
@@ -116,6 +123,9 @@ const csvShape = {
 
 /** The one file, read and written whole. */
 class WealthFile {
+	/** The bytes the last read found, `null` for no file: what a write expects to replace. */
+	private seen: string | null | undefined;
+
 	constructor(
 		readonly path: string,
 		private readonly now: () => string
@@ -130,7 +140,8 @@ class WealthFile {
 			throw new Refusal(`${this.path} does not exist yet; upsert_holding or import_csv creates it`);
 		let parsed: unknown;
 		try {
-			parsed = JSON.parse(readFileSync(this.path, 'utf8'));
+			this.seen = readFileSync(this.path, 'utf8');
+			parsed = JSON.parse(this.seen);
 		} catch (error) {
 			throw new Refusal(`${this.path} is not JSON: ${(error as Error).message}`);
 		}
@@ -158,7 +169,14 @@ class WealthFile {
 
 	/** The valid document, or a fresh one when the file is not there yet. */
 	readOrEmpty(): AssetNotationDocument {
-		return this.exists() ? this.readValid() : emptyDocument(this.now());
+		if (this.exists()) return this.readValid();
+		this.seen = null;
+		return emptyDocument(this.now());
+	}
+
+	/** What the file holds now, `null` when it is gone. */
+	private current(): string | null {
+		return this.exists() ? readFileSync(this.path, 'utf8') : null;
 	}
 
 	/** Validate, then write the whole file: two-space indent, one trailing newline. */
@@ -174,8 +192,18 @@ class WealthFile {
 		// Written beside, then renamed over: an interrupted write or a full disk
 		// leaves the previous file whole instead of a truncated one.
 		const temporary = `${this.path}.${process.pid}.tmp`;
-		writeFileSync(temporary, `${JSON.stringify(final, null, 2)}\n`, { flush: true });
+		const text = `${JSON.stringify(final, null, 2)}\n`;
+		writeFileSync(temporary, text, { flush: true });
+		// One server process per client: a second one may have written since
+		// this change was read, and renaming over it would erase its change.
+		if (this.seen !== undefined && this.current() !== this.seen) {
+			unlinkSync(temporary);
+			throw new Refusal(
+				`${this.path} changed since it was read, by another writer; nothing was written, run the tool again`
+			);
+		}
 		renameSync(temporary, this.path);
+		this.seen = text;
 		return final;
 	}
 }

@@ -361,6 +361,28 @@ describe('the MCP tools', () => {
 		expect(readFileSync(path, 'utf8')).toBe(before);
 	});
 
+	it('a write refuses to erase what another writer saved since the read', () => {
+		call('upsert_holding', { id: 'h1', label: 'Livret' });
+		let theirs = '';
+		const racing = Object.fromEntries(
+			wealthTools(path, () => {
+				// Runs inside the write, after this call read the file.
+				const doc = stored();
+				(doc.holdings as { label: string }[])[0].label = 'Livret A';
+				theirs = `${JSON.stringify(doc, null, 2)}\n`;
+				writeFileSync(path, theirs);
+				return NOW;
+			}).map((t) => [t.name, t])
+		);
+		expect(() => racing.upsert_holding.run({ id: 'h2', label: 'PEA' })).toThrow(
+			/changed since it was read/
+		);
+		expect(readFileSync(path, 'utf8')).toBe(theirs);
+		expect(existsSync(`${path}.${process.pid}.tmp`)).toBe(false);
+		call('upsert_holding', { id: 'h2', label: 'PEA' });
+		expect((stored().holdings as unknown[]).length).toBe(2);
+	});
+
 	it('a document that does not validate is neither totalled nor changed', () => {
 		call('upsert_holding', { id: 'h1', label: 'Livret' });
 		const broken = { ...stored(), holdings: 'not a list' };
