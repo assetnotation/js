@@ -16,8 +16,9 @@
 - MCP server: `add_valuation` refuses a holding id that is not in the document,
   and a debt valued below zero. Both used to be written, and the first one
   vanished from every total.
-- `from-csv`: a debt printed as a negative balance (`-90000`) is read as what is
-  owed (`90000`). Subtracted as a negative, it raised the net worth instead.
+- `from-csv`: a row valuing a liability below zero (`-90000`) is refused, as
+  the specification refuses it from 0.5.0. Subtracted as a negative, it raised
+  the net worth instead of lowering it.
 - `to-csv`: a text cell starting with `=`, `+`, `-`, `@`, a tab or a carriage
   return is written behind an apostrophe, so a spreadsheet does not run it as a
   formula; `from-csv` takes the apostrophe back off. Amounts are untouched.

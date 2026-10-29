@@ -190,7 +190,7 @@ describe('reading a spreadsheet as people actually save it', () => {
 		const doc = fromCsv(
 			'label;kind;nature;currency;institution;amount;asOf\n' +
 				'Compte;checking;asset;EUR;Banque;10,00;2026-06-24\n' +
-				'Prêt;mortgage;liability;EUR;Banque;-90000,00;2026-06-24\n',
+				'Prêt;mortgage;liability;EUR;Banque;90000,00;2026-06-24\n',
 			{ generatedAt: STAMP, baseCurrency: 'EUR' }
 		);
 		const result = validate(doc);
@@ -198,17 +198,22 @@ describe('reading a spreadsheet as people actually save it', () => {
 		expect(result.valid).toBe(true);
 	});
 
-	it('reads a debt printed as a negative balance as what is owed, and subtracts it', () => {
+	it('subtracts a debt from the total, and refuses one valued below zero', () => {
 		const doc = fromCsv(
 			'label;nature;currency;amount;asOf\n' +
 				'Compte;asset;EUR;10,00;2026-06-24\n' +
-				'Prêt;liability;EUR;-90000,00;2026-06-24\n',
+				'Prêt;liability;EUR;90000,00;2026-06-24\n',
 			{ generatedAt: STAMP }
 		);
-		expect((doc.valuations as { value: { amount: string } }[])[1].value.amount).toBe('90000.00');
 		expect(netWorth(doc).byCurrency).toEqual([
 			{ currency: 'EUR', assets: '10.00', liabilities: '90000.00', net: '-89990.00' }
 		]);
+		// Subtracted as a negative, -90000 raised the net worth by 90000.
+		expect(() =>
+			fromCsv('label;nature;currency;amount\nPrêt;liability;EUR;-90000,00\n', {
+				generatedAt: STAMP
+			})
+		).toThrow(/row 2 values a liability below zero/);
 	});
 
 	it('writes a text cell a spreadsheet would run as text, and reads it back unchanged', () => {

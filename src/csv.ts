@@ -342,14 +342,20 @@ export function fromCsv(text: string, options: FromCsvOptions = {}): AssetNotati
 		}
 		holdings.push(holding);
 
+		// The format carries a debt as what is owed, zero or more, and the net
+		// worth subtracts it: a negative one would raise the total. Reading its
+		// absolute value would guess, and turn an overpaid loan into a debt.
+		if (nature === 'liability' && amount.startsWith('-')) {
+			throw new Error(
+				`asset-notation: row ${i + 1} values a liability below zero (${amount}); write what is owed as a positive amount`
+			);
+		}
 		if (amount !== '') {
 			const valuation: Record<string, unknown> = {
 				id: `v${valuations.length + 1}`,
 				holdingId: id,
 				asOf: dateOf(at(row, 'asof'), delimiter) || generatedAt.slice(0, 10),
-				// A bank export prints a debt as a negative balance; the format
-				// carries what is owed, zero or more, and the net worth subtracts it.
-				value: { amount: nature === 'liability' ? amount.replace(/^-/, '') : amount, currency }
+				value: { amount, currency }
 			};
 			const source = at(row, 'source');
 			if (source !== '') valuation.source = source;
