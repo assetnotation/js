@@ -2,6 +2,34 @@
 
 ## [Unreleased]
 
+### Added
+
+- Version 0.5.0 of the format: its schema and conformance corpus, mirrored
+  from the specification. Under 0.5.0 a liability valued below zero is an
+  integrity error; a document declaring an earlier version is judged as before.
+  The examples and the 0.3.0 and 0.4.0 corpora follow the specification too.
+
+### Changed
+
+- `validate`: a parent cycle and an ownership overlap are errors from 0.4.0 on,
+  as the specification states them; a 0.3.0 document carrying either is valid
+  again, which is what its own corpus says.
+
+### Fixed
+
+- MCP server: a save keeps the file private. The temporary file is created
+  owner-only, and the file it replaces keeps its permissions instead of taking
+  the umask's (a `0600` document became readable by other local users).
+- MCP server: `add_valuation` refuses a holding id that is not in the document,
+  and a debt valued below zero. Both used to be written, and the first one
+  vanished from every total.
+- `from-csv`: a row valuing a liability below zero (`-90000`) is refused, as
+  the specification refuses it from 0.5.0. Subtracted as a negative, it raised
+  the net worth instead of lowering it.
+- `to-csv`: a text cell starting with `=`, `+`, `-`, `@`, a tab or a carriage
+  return is written behind an apostrophe, so a spreadsheet does not run it as a
+  formula; `from-csv` takes the apostrophe back off. Amounts are untouched.
+
 ## [0.1.7] - 2026-10-24
 
 ### Fixed

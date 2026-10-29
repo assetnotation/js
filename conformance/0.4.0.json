@@ -1365,6 +1365,34 @@
           }
         ]
       }
+    },
+    {
+      "name": "liability valued below zero, which 0.4.0 does not forbid (forbidden since 0.5.0)",
+      "section": "5.3",
+      "valid": true,
+      "document": {
+        "assetnotation": "0.4.0",
+        "generatedAt": "2026-10-20T09:00:00Z",
+        "holdings": [
+          {
+            "id": "h1",
+            "kind": "mortgage",
+            "nature": "liability",
+            "currency": "EUR"
+          }
+        ],
+        "valuations": [
+          {
+            "id": "v1",
+            "holdingId": "h1",
+            "asOf": "2026-09-30",
+            "value": {
+              "amount": "-90000.00",
+              "currency": "EUR"
+            }
+          }
+        ]
+      }
     }
   ]
 }

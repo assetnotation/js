@@ -16,8 +16,10 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import {
 	existsSync,
 	mkdirSync,
+	chmodSync,
 	readFileSync,
 	renameSync,
+	statSync,
 	unlinkSync,
 	writeFileSync
 } from 'node:fs';
@@ -193,16 +195,24 @@ class WealthFile {
 		// leaves the previous file whole instead of a truncated one.
 		const temporary = `${this.path}.${process.pid}.tmp`;
 		const text = `${JSON.stringify(final, null, 2)}\n`;
-		writeFileSync(temporary, text, { flush: true });
-		// One server process per client: a second one may have written since
-		// this change was read, and renaming over it would erase its change.
-		if (this.seen !== undefined && this.current() !== this.seen) {
+		// A net worth is private: the temporary is born owner-only, and the file
+		// it replaces keeps the permissions it had rather than the umask's.
+		const mode = this.exists() ? statSync(this.path).mode & 0o777 : 0o600;
+		writeFileSync(temporary, text, { flush: true, mode: 0o600 });
+		try {
+			chmodSync(temporary, mode);
+			// One server process per client: a second one may have written since
+			// this change was read, and renaming over it would erase its change.
+			if (this.seen !== undefined && this.current() !== this.seen) {
+				throw new Refusal(
+					`${this.path} changed since it was read, by another writer; nothing was written, run the tool again`
+				);
+			}
+			renameSync(temporary, this.path);
+		} catch (error) {
 			unlinkSync(temporary);
-			throw new Refusal(
-				`${this.path} changed since it was read, by another writer; nothing was written, run the tool again`
-			);
+			throw error;
 		}
-		renameSync(temporary, this.path);
 		this.seen = text;
 		return final;
 	}
@@ -261,10 +271,22 @@ export function wealthTools(
 			inputSchema: valuationShape,
 			readOnly: false,
 			run: (args) => {
-				const { doc, valuation } = addValuation(
-					file.readValid(),
-					args as unknown as Parameters<typeof addValuation>[1]
+				const input = args as unknown as Parameters<typeof addValuation>[1];
+				const current = file.readValid();
+				const holding = (current.holdings as { id?: unknown; nature?: unknown }[]).find(
+					(h) => h.id === input.holdingId
 				);
+				// The validator reads an unknown holdingId as a note, for partial
+				// documents; here it would record a sum no total ever counts.
+				if (holding === undefined)
+					throw new Refusal(
+						`no holding has the id "${input.holdingId}"; list_holdings gives the ids, nothing was written`
+					);
+				if (holding.nature === 'liability' && input.amount.startsWith('-'))
+					throw new Refusal(
+						'a debt is valued at what is still owed, zero or more; nothing was written'
+					);
+				const { doc, valuation } = addValuation(current, input);
 				file.write(doc);
 				return valuation;
 			}

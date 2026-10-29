@@ -7,10 +7,12 @@
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
+	chmodSync,
 	mkdirSync,
 	mkdtempSync,
 	readFileSync,
 	readdirSync,
+	statSync,
 	writeFileSync,
 	existsSync
 } from 'node:fs';
@@ -166,12 +168,39 @@ describe('the MCP tools', () => {
 			}).message
 		).toMatch(/does not exist yet/);
 		call('upsert_holding', { id: 'h1' });
-		// An unresolved reference is a note, not an error: the document stays valid.
-		call('add_valuation', { holdingId: 'h9', asOf: '2026-01-01', amount: '1', currency: 'EUR' });
-		expect(call('validate')).toMatchObject({
-			valid: true,
-			notes: [expect.stringMatching(/valuation v1.holdingId "h9"/)]
-		});
+		const before = readFileSync(path, 'utf8');
+		// The validator keeps an unresolved reference as a note, for partial
+		// documents; recorded here, the sum would vanish from every total.
+		expect(
+			refusal('add_valuation', {
+				holdingId: 'h9',
+				asOf: '2026-01-01',
+				amount: '1',
+				currency: 'EUR'
+			}).message
+		).toMatch(/no holding has the id "h9"/);
+		expect(readFileSync(path, 'utf8')).toBe(before);
+	});
+
+	it('add_valuation refuses a debt valued below zero', () => {
+		call('upsert_holding', { id: 'h1', nature: 'liability', label: 'Prêt' });
+		expect(
+			refusal('add_valuation', {
+				holdingId: 'h1',
+				asOf: '2026-01-01',
+				amount: '-90000',
+				currency: 'EUR'
+			}).message
+		).toMatch(/zero or more/);
+		expect(stored().valuations ?? []).toEqual([]);
+	});
+
+	it('a save keeps the file private: owner-only when new, the same mode when replaced', () => {
+		call('upsert_holding', { id: 'h1', label: 'Livret' });
+		expect(statSync(path).mode & 0o777).toBe(0o600);
+		chmodSync(path, 0o640);
+		call('upsert_holding', { id: 'h1', label: 'Livret A' });
+		expect(statSync(path).mode & 0o777).toBe(0o640);
 	});
 
 	it('net_worth sums the latest valuation of each holding, exactly, per currency', () => {

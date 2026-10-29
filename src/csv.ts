@@ -86,6 +86,20 @@ function records(text: string): string[] {
 	return out;
 }
 
+/** What a spreadsheet reads as a formula when it opens a cell. */
+const FORMULA_START = /^[=+\-@\t\r]/;
+
+/** A text cell a spreadsheet would run, kept as text by a leading apostrophe.
+ *  Amounts never go through here: a negative figure is a number, not a formula. */
+function asText(value: string): string {
+	return FORMULA_START.test(value) ? `'${value}` : value;
+}
+
+/** The apostrophe `asText` put back off, so a file read back is the file written. */
+function fromText(value: string): string {
+	return value.startsWith("'") && FORMULA_START.test(value.slice(1)) ? value.slice(1) : value;
+}
+
 function quote(value: string, delimiter: string): string {
 	return /["\n\r]/.test(value) || value.includes(delimiter)
 		? `"${value.replaceAll('"', '""')}"`
@@ -215,17 +229,17 @@ export function toCsv(doc: AssetNotationDocument, options: CsvOptions = {}): str
 		const v = latestValuation(doc, h.id);
 		const value = (v?.value ?? {}) as Record<string, unknown>;
 		const row = [
-			String(h.id ?? ''),
-			String(h.label ?? ''),
-			String(h.kind ?? ''),
-			String(h.nature ?? ''),
+			asText(String(h.id ?? '')),
+			asText(String(h.label ?? '')),
+			asText(String(h.kind ?? '')),
+			asText(String(h.nature ?? '')),
 			// The amount is the valuation's, so its currency must be too: a
 			// holding kept in EUR but valued in USD exported a USD figure as EUR.
-			String(value.currency ?? h.currency ?? doc.baseCurrency ?? ''),
-			institutions.get(String(h.institutionId ?? '')) ?? '',
+			asText(String(value.currency ?? h.currency ?? doc.baseCurrency ?? '')),
+			asText(institutions.get(String(h.institutionId ?? '')) ?? ''),
 			String(value.amount ?? ''),
 			String(v?.asOf ?? ''),
-			String(v?.source ?? '')
+			asText(String(v?.source ?? ''))
 		];
 		lines.push(row.map((f) => quote(f, delimiter)).join(delimiter));
 	}
@@ -280,7 +294,7 @@ export function fromCsv(text: string, options: FromCsvOptions = {}): AssetNotati
 	if (twice) throw new Error(`asset-notation: the CSV header names the column "${twice}" twice`);
 	const at = (row: string[], name: string): string => {
 		const i = header.indexOf(name);
-		return i === -1 ? '' : (row[i] ?? '').trim();
+		return i === -1 ? '' : fromText((row[i] ?? '').trim());
 	};
 
 	const holdings: Record<string, unknown>[] = [];
@@ -304,6 +318,7 @@ export function fromCsv(text: string, options: FromCsvOptions = {}): AssetNotati
 			options.baseCurrency
 		);
 		if (label === '' && amount === '') continue;
+		const nature = natureOf(at(row, 'nature'));
 
 		const id = at(row, 'id') || `h${holdings.length + 1}`;
 		const holding: Record<string, unknown> = {
@@ -311,7 +326,7 @@ export function fromCsv(text: string, options: FromCsvOptions = {}): AssetNotati
 			kind: at(row, 'kind') || 'other',
 			// A row that does not say is an asset: that is what a spreadsheet of
 			// balances is, and a wrong "liability" would flip a net worth.
-			nature: natureOf(at(row, 'nature')),
+			nature,
 			currency
 		};
 		if (label !== '') holding.label = label;
@@ -327,6 +342,14 @@ export function fromCsv(text: string, options: FromCsvOptions = {}): AssetNotati
 		}
 		holdings.push(holding);
 
+		// The format carries a debt as what is owed, zero or more, and the net
+		// worth subtracts it: a negative one would raise the total. Reading its
+		// absolute value would guess, and turn an overpaid loan into a debt.
+		if (nature === 'liability' && amount.startsWith('-')) {
+			throw new Error(
+				`asset-notation: row ${i + 1} values a liability below zero (${amount}); write what is owed as a positive amount`
+			);
+		}
 		if (amount !== '') {
 			const valuation: Record<string, unknown> = {
 				id: `v${valuations.length + 1}`,

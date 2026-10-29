@@ -6,6 +6,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { fromCsv, toCsv } from './csv.js';
+import { netWorth } from './wealth.js';
 import { validate, supportedVersions } from './validate.js';
 
 const STAMP = '2026-08-01T00:00:00Z';
@@ -189,12 +190,43 @@ describe('reading a spreadsheet as people actually save it', () => {
 		const doc = fromCsv(
 			'label;kind;nature;currency;institution;amount;asOf\n' +
 				'Compte;checking;asset;EUR;Banque;10,00;2026-06-24\n' +
-				'Prêt;mortgage;liability;EUR;Banque;-90000,00;2026-06-24\n',
+				'Prêt;mortgage;liability;EUR;Banque;90000,00;2026-06-24\n',
 			{ generatedAt: STAMP, baseCurrency: 'EUR' }
 		);
 		const result = validate(doc);
 		expect(result.errors).toEqual([]);
 		expect(result.valid).toBe(true);
+	});
+
+	it('subtracts a debt from the total, and refuses one valued below zero', () => {
+		const doc = fromCsv(
+			'label;nature;currency;amount;asOf\n' +
+				'Compte;asset;EUR;10,00;2026-06-24\n' +
+				'Prêt;liability;EUR;90000,00;2026-06-24\n',
+			{ generatedAt: STAMP }
+		);
+		expect(netWorth(doc).byCurrency).toEqual([
+			{ currency: 'EUR', assets: '10.00', liabilities: '90000.00', net: '-89990.00' }
+		]);
+		// Subtracted as a negative, -90000 raised the net worth by 90000.
+		expect(() =>
+			fromCsv('label;nature;currency;amount\nPrêt;liability;EUR;-90000,00\n', {
+				generatedAt: STAMP
+			})
+		).toThrow(/row 2 values a liability below zero/);
+	});
+
+	it('writes a text cell a spreadsheet would run as text, and reads it back unchanged', () => {
+		const doc = fromCsv('label;institution;amount\n"=HYPERLINK(""x"")";+Banque;-5\n', {
+			generatedAt: STAMP
+		});
+		const csv = toCsv(doc);
+		const row = csv.split('\n')[1];
+		expect(row).toContain(`'=HYPERLINK`);
+		expect(row).toContain(`;'+Banque;`);
+		expect(row).toContain(';-5;');
+		const back = fromCsv(csv, { generatedAt: STAMP });
+		expect((back.holdings as { label: string }[])[0].label).toBe('=HYPERLINK("x")');
 	});
 
 	it('refuses an empty file rather than inventing an empty document', () => {
