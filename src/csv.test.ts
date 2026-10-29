@@ -6,6 +6,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { fromCsv, toCsv } from './csv.js';
+import { netWorth } from './wealth.js';
 import { validate, supportedVersions } from './validate.js';
 
 const STAMP = '2026-08-01T00:00:00Z';
@@ -195,6 +196,32 @@ describe('reading a spreadsheet as people actually save it', () => {
 		const result = validate(doc);
 		expect(result.errors).toEqual([]);
 		expect(result.valid).toBe(true);
+	});
+
+	it('reads a debt printed as a negative balance as what is owed, and subtracts it', () => {
+		const doc = fromCsv(
+			'label;nature;currency;amount;asOf\n' +
+				'Compte;asset;EUR;10,00;2026-06-24\n' +
+				'Prêt;liability;EUR;-90000,00;2026-06-24\n',
+			{ generatedAt: STAMP }
+		);
+		expect((doc.valuations as { value: { amount: string } }[])[1].value.amount).toBe('90000.00');
+		expect(netWorth(doc).byCurrency).toEqual([
+			{ currency: 'EUR', assets: '10.00', liabilities: '90000.00', net: '-89990.00' }
+		]);
+	});
+
+	it('writes a text cell a spreadsheet would run as text, and reads it back unchanged', () => {
+		const doc = fromCsv('label;institution;amount\n"=HYPERLINK(""x"")";+Banque;-5\n', {
+			generatedAt: STAMP
+		});
+		const csv = toCsv(doc);
+		const row = csv.split('\n')[1];
+		expect(row).toContain(`'=HYPERLINK`);
+		expect(row).toContain(`;'+Banque;`);
+		expect(row).toContain(';-5;');
+		const back = fromCsv(csv, { generatedAt: STAMP });
+		expect((back.holdings as { label: string }[])[0].label).toBe('=HYPERLINK("x")');
 	});
 
 	it('refuses an empty file rather than inventing an empty document', () => {

@@ -2,6 +2,20 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- MCP server: a save keeps the file private. The temporary file is created
+  owner-only, and the file it replaces keeps its permissions instead of taking
+  the umask's (a `0600` document became readable by other local users).
+- MCP server: `add_valuation` refuses a holding id that is not in the document,
+  and a debt valued below zero. Both used to be written, and the first one
+  vanished from every total.
+- `from-csv`: a debt printed as a negative balance (`-90000`) is read as what is
+  owed (`90000`). Subtracted as a negative, it raised the net worth instead.
+- `to-csv`: a text cell starting with `=`, `+`, `-`, `@`, a tab or a carriage
+  return is written behind an apostrophe, so a spreadsheet does not run it as a
+  formula; `from-csv` takes the apostrophe back off. Amounts are untouched.
+
 ## [0.1.7] - 2026-10-24
 
 ### Fixed
