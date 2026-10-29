@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+### Added
+
+- Version 0.5.0 of the format: its schema and conformance corpus, mirrored
+  from the specification. Under 0.5.0 a liability valued below zero is an
+  integrity error; a document declaring an earlier version is judged as before.
+
 ### Fixed
 
 - MCP server: a save keeps the file private. The temporary file is created

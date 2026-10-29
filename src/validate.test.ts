@@ -142,7 +142,8 @@ describe('the document-level rules', () => {
 const INVARIANTS: Record<string, string> = {
 	'duplicate-id': 'duplicate id',
 	'parent-cycle': 'parent cycle',
-	'ownership-overlap': 'ownership of holding'
+	'ownership-overlap': 'ownership of holding',
+	'negative-liability': 'negative liability value'
 };
 
 interface ConformanceCase {

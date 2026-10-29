@@ -107,7 +107,18 @@ function list(doc: AssetNotationDocument, name: string): Record<string, unknown>
 	return Array.isArray(value) ? value.filter(isObject) : [];
 }
 
-function integrity(doc: AssetNotationDocument): { errors: string[]; notes: string[] } {
+/** Whether a declared `major.minor` is at least `floor`: a rule a release adds
+ *  judges the documents of that release on, never an archive written before. */
+function atLeast(majorMinor: string, floor: string): boolean {
+	const [a, b] = majorMinor.split('.').map(Number);
+	const [c, d] = floor.split('.').map(Number);
+	return a > c || (a === c && b >= d);
+}
+
+function integrity(
+	doc: AssetNotationDocument,
+	majorMinor: string
+): { errors: string[]; notes: string[] } {
 	const errors: string[] = [];
 	const notes: string[] = [];
 	const ids: Record<Collection, Set<string>> = {} as Record<Collection, Set<string>>;
@@ -154,8 +165,35 @@ function integrity(doc: AssetNotationDocument): { errors: string[]; notes: strin
 		ref('ownership', 'holdingId', o.holdingId, 'holdings');
 	}
 	errors.push(...parentCycles(doc), ...ownershipOverlaps(doc));
+	if (atLeast(majorMinor, '0.5')) errors.push(...negativeLiabilities(doc));
 	notes.push(...overSharedHoldings(doc));
 	return { errors, notes };
+}
+
+/** A liability valued below zero (specification section 5.3, since 0.5.0): the
+ *  derivation subtracts a liability, so a negative outstanding would count the
+ *  debt as an asset. A valuation whose holding is absent is not judged: its
+ *  nature is unknown. */
+function negativeLiabilities(doc: AssetNotationDocument): string[] {
+	const liabilities = new Set(
+		list(doc, 'holdings')
+			.filter((h) => h.nature === 'liability')
+			.map((h) => h.id)
+	);
+	return list(doc, 'valuations')
+		.filter((v) => {
+			const value = isObject(v.value) ? v.value : {};
+			return (
+				liabilities.has(v.holdingId) &&
+				String(value.amount ?? '')
+					.trim()
+					.startsWith('-')
+			);
+		})
+		.map(
+			(v) =>
+				`negative liability value: valuation "${String(v.id)}" of holding "${String(v.holdingId)}"`
+		);
 }
 
 /** A holding whose chain of parents comes back to itself: an integrity error
@@ -253,7 +291,8 @@ export function validate(doc: unknown): ValidationResult {
 	}
 	const document = doc as AssetNotationDocument;
 	const declared = String(document.assetnotation ?? '');
-	const entry = load().get(declared.split('.').slice(0, 2).join('.'));
+	const majorMinor = declared.split('.').slice(0, 2).join('.');
+	const entry = load().get(majorMinor);
 	if (!entry) {
 		return {
 			valid: false,
@@ -273,7 +312,7 @@ export function validate(doc: unknown): ValidationResult {
 			errors.push(`${err.instancePath || '/'} ${err.message ?? 'is invalid'}`);
 		}
 	}
-	const rules = integrity(document);
+	const rules = integrity(document, majorMinor);
 	errors.push(...rules.errors);
 
 	return { valid: errors.length === 0, schemaVersion: entry.version, errors, notes: rules.notes };
