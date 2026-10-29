@@ -86,6 +86,19 @@ function records(text: string): string[] {
 	return out;
 }
 
+/** What a spreadsheet reads as a formula at the start of a cell (OWASP CSV injection). */
+const FORMULA = /^[=+\-@\t\r]/;
+
+/** A text cell a spreadsheet would run as a formula, kept as text by a leading apostrophe. */
+function inert(value: string): string {
+	return FORMULA.test(value) ? `'${value}` : value;
+}
+
+/** The text an `inert` cell carried, so an export reads back as it was. */
+function revived(value: string): string {
+	return value.startsWith("'") && FORMULA.test(value.slice(1)) ? value.slice(1) : value;
+}
+
 function quote(value: string, delimiter: string): string {
 	return /["\n\r]/.test(value) || value.includes(delimiter)
 		? `"${value.replaceAll('"', '""')}"`
@@ -216,16 +229,16 @@ export function toCsv(doc: AssetNotationDocument, options: CsvOptions = {}): str
 		const value = (v?.value ?? {}) as Record<string, unknown>;
 		const row = [
 			String(h.id ?? ''),
-			String(h.label ?? ''),
+			inert(String(h.label ?? '')),
 			String(h.kind ?? ''),
 			String(h.nature ?? ''),
 			// The amount is the valuation's, so its currency must be too: a
 			// holding kept in EUR but valued in USD exported a USD figure as EUR.
 			String(value.currency ?? h.currency ?? doc.baseCurrency ?? ''),
-			institutions.get(String(h.institutionId ?? '')) ?? '',
+			inert(institutions.get(String(h.institutionId ?? '')) ?? ''),
 			String(value.amount ?? ''),
 			String(v?.asOf ?? ''),
-			String(v?.source ?? '')
+			inert(String(v?.source ?? ''))
 		];
 		lines.push(row.map((f) => quote(f, delimiter)).join(delimiter));
 	}
@@ -280,7 +293,7 @@ export function fromCsv(text: string, options: FromCsvOptions = {}): AssetNotati
 	if (twice) throw new Error(`asset-notation: the CSV header names the column "${twice}" twice`);
 	const at = (row: string[], name: string): string => {
 		const i = header.indexOf(name);
-		return i === -1 ? '' : (row[i] ?? '').trim();
+		return i === -1 ? '' : revived((row[i] ?? '').trim());
 	};
 
 	const holdings: Record<string, unknown>[] = [];
@@ -332,7 +345,12 @@ export function fromCsv(text: string, options: FromCsvOptions = {}): AssetNotati
 				id: `v${valuations.length + 1}`,
 				holdingId: id,
 				asOf: dateOf(at(row, 'asof'), delimiter) || generatedAt.slice(0, 10),
-				value: { amount, currency }
+				// A debt is worth a positive amount, as add_valuation says; a bank
+				// sheet printing a loan as -90000 would otherwise RAISE the net worth.
+				value: {
+					amount: holding.nature === 'liability' ? amount.replace(/^-/, '') : amount,
+					currency
+				}
 			};
 			const source = at(row, 'source');
 			if (source !== '') valuation.source = source;

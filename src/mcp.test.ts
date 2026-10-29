@@ -12,7 +12,9 @@ import {
 	readFileSync,
 	readdirSync,
 	writeFileSync,
-	existsSync
+	existsSync,
+	statSync,
+	chmodSync
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -166,11 +168,32 @@ describe('the MCP tools', () => {
 			}).message
 		).toMatch(/does not exist yet/);
 		call('upsert_holding', { id: 'h1' });
-		// An unresolved reference is a note, not an error: the document stays valid.
-		call('add_valuation', { holdingId: 'h9', asOf: '2026-01-01', amount: '1', currency: 'EUR' });
-		expect(call('validate')).toMatchObject({
-			valid: true,
-			notes: [expect.stringMatching(/valuation v1.holdingId "h9"/)]
+		// The validator would only note the dangling id, and the amount would then
+		// vanish from every list and from the total: the command refuses it.
+		const before = readFileSync(path, 'utf8');
+		expect(
+			refusal('add_valuation', {
+				holdingId: 'h9',
+				asOf: '2026-01-01',
+				amount: '1',
+				currency: 'EUR'
+			}).message
+		).toMatch(/no holding has the id h9/);
+		expect(readFileSync(path, 'utf8')).toBe(before);
+	});
+
+	it('writes the file for its owner alone, and keeps the mode of the file it replaces', () => {
+		call('upsert_holding', { id: 'h1' });
+		expect(statSync(path).mode & 0o777).toBe(0o600);
+		chmodSync(path, 0o640);
+		call('upsert_holding', { id: 'h2' });
+		expect(statSync(path).mode & 0o777).toBe(0o640);
+	});
+
+	it('import_csv stores a debt the sheet prints negative as the positive amount it owes', () => {
+		call('import_csv', { csv: 'label;nature;amount;asOf\nLoan;liability;-90000;2026-10-18\n' });
+		expect(call('net_worth')).toMatchObject({
+			byCurrency: [expect.objectContaining({ liabilities: '90000', net: '-90000' })]
 		});
 	});
 

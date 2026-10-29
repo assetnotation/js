@@ -356,4 +356,15 @@ describe('writing a spreadsheet', () => {
 			((back.valuations as Record<string, unknown>[])[0].value as Record<string, unknown>).amount
 		).toBe('5.00');
 	});
+
+	it('exports a text cell a spreadsheet would run as a formula as text, and reads it back as it was', () => {
+		const doc = fromCsv('label;institution;amount;source\n=HYPERLINK("x");@SUM(A1);100;+cmd\n', {
+			generatedAt: STAMP
+		});
+		const csv = toCsv(doc);
+		expect(csv).toContain(`'=HYPERLINK`);
+		expect(csv).toContain(`'@SUM(A1)`);
+		expect(csv).toContain(`'+cmd`);
+		expect(toCsv(fromCsv(csv, { generatedAt: STAMP }))).toBe(csv);
+	});
 });

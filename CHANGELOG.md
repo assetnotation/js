@@ -2,6 +2,19 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- MCP server: a write keeps the permissions of the file it replaces, and a new
+  file is readable by its owner alone (`0600`). It used to follow the umask, so
+  a private file could become readable by other local users after one save.
+- MCP server: `add_valuation` refuses a `holdingId` no holding has. The amount
+  used to be written and then vanish from every list and from the net worth.
+- `from-csv`: a liability whose amount the sheet prints negative is stored as
+  the positive amount owed. Read as `-90000`, it raised the net worth by 90 000.
+- `to-csv`: a label, institution or source starting with `=`, `+`, `-`, `@`, a
+  tab or a carriage return is exported behind an apostrophe, so a spreadsheet
+  shows it as text instead of running it. `from-csv` reads it back unchanged.
+
 ## [0.1.7] - 2026-10-24
 
 ### Fixed

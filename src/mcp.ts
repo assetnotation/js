@@ -14,10 +14,13 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import {
+	chmodSync,
 	existsSync,
 	mkdirSync,
 	readFileSync,
 	renameSync,
+	rmSync,
+	statSync,
 	unlinkSync,
 	writeFileSync
 } from 'node:fs';
@@ -193,7 +196,12 @@ class WealthFile {
 		// leaves the previous file whole instead of a truncated one.
 		const temporary = `${this.path}.${process.pid}.tmp`;
 		const text = `${JSON.stringify(final, null, 2)}\n`;
-		writeFileSync(temporary, text, { flush: true });
+		// A wealth file is private: the replacement keeps the mode of the file it
+		// replaces, and a new one is readable by its owner alone.
+		const mode = existsSync(this.path) ? statSync(this.path).mode & 0o777 : 0o600;
+		rmSync(temporary, { force: true });
+		writeFileSync(temporary, text, { flush: true, mode });
+		chmodSync(temporary, mode);
 		// One server process per client: a second one may have written since
 		// this change was read, and renaming over it would erase its change.
 		if (this.seen !== undefined && this.current() !== this.seen) {
@@ -202,7 +210,12 @@ class WealthFile {
 				`${this.path} changed since it was read, by another writer; nothing was written, run the tool again`
 			);
 		}
-		renameSync(temporary, this.path);
+		try {
+			renameSync(temporary, this.path);
+		} catch (error) {
+			rmSync(temporary, { force: true });
+			throw error;
+		}
 		this.seen = text;
 		return final;
 	}
@@ -261,10 +274,14 @@ export function wealthTools(
 			inputSchema: valuationShape,
 			readOnly: false,
 			run: (args) => {
-				const { doc, valuation } = addValuation(
-					file.readValid(),
-					args as unknown as Parameters<typeof addValuation>[1]
-				);
+				const input = args as unknown as Parameters<typeof addValuation>[1];
+				const current = file.readValid();
+				// The validator lets a dangling holdingId pass as a partial document;
+				// written here it would vanish from every list and from the total.
+				const holdings = Array.isArray(current.holdings) ? current.holdings : [];
+				if (!holdings.some((h) => (h as { id?: unknown }).id === input.holdingId))
+					throw new Refusal(`no holding has the id ${input.holdingId}; nothing was written`);
+				const { doc, valuation } = addValuation(current, input);
 				file.write(doc);
 				return valuation;
 			}
