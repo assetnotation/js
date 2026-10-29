@@ -60,9 +60,10 @@ describe('the document-level rules', () => {
 
 	it('refuses a chain of parents that comes back on itself', () => {
 		// The specification walks the chain to derive a total; a loop has no
-		// root. An error, reported from each member's own start.
+		// root. An error since 0.4.0, reported from each member's own start.
 		const result = validate(
 			doc({
+				assetnotation: '0.4.0',
 				holdings: [
 					{ id: 'h1', kind: 'brokerage', nature: 'asset', parentId: 'h2' },
 					{ id: 'h2', kind: 'brokerage', nature: 'asset', parentId: 'h1' },

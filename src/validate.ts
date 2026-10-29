@@ -164,7 +164,9 @@ function integrity(
 		ref('ownership', 'subjectId', o.subjectId, 'subjects');
 		ref('ownership', 'holdingId', o.holdingId, 'holdings');
 	}
-	errors.push(...parentCycles(doc), ...ownershipOverlaps(doc));
+	// Each rule judges the versions that state it, as the specification's own
+	// validator does: an archive valid under 0.3.0 stays valid.
+	if (atLeast(majorMinor, '0.4')) errors.push(...parentCycles(doc), ...ownershipOverlaps(doc));
 	if (atLeast(majorMinor, '0.5')) errors.push(...negativeLiabilities(doc));
 	notes.push(...overSharedHoldings(doc));
 	return { errors, notes };

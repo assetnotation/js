@@ -7,6 +7,13 @@
 - Version 0.5.0 of the format: its schema and conformance corpus, mirrored
   from the specification. Under 0.5.0 a liability valued below zero is an
   integrity error; a document declaring an earlier version is judged as before.
+  The examples and the 0.3.0 and 0.4.0 corpora follow the specification too.
+
+### Changed
+
+- `validate`: a parent cycle and an ownership overlap are errors from 0.4.0 on,
+  as the specification states them; a 0.3.0 document carrying either is valid
+  again, which is what its own corpus says.
 
 ### Fixed
 
