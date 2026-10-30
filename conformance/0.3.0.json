@@ -1132,6 +1132,94 @@
           }
         ]
       }
+    },
+    {
+      "name": "parent chain that loops, which 0.3.0 does not forbid (acyclic since 0.4.0)",
+      "section": "4",
+      "valid": true,
+      "document": {
+        "assetnotation": "0.3.0",
+        "generatedAt": "2026-07-08T09:00:00Z",
+        "holdings": [
+          {
+            "id": "h1",
+            "kind": "brokerage",
+            "nature": "asset",
+            "parentId": "h2"
+          },
+          {
+            "id": "h2",
+            "kind": "brokerage",
+            "nature": "asset",
+            "parentId": "h1"
+          }
+        ]
+      }
+    },
+    {
+      "name": "liability valued below zero, which 0.3.0 does not forbid (forbidden since 0.5.0)",
+      "section": "5.3",
+      "valid": true,
+      "document": {
+        "assetnotation": "0.3.0",
+        "generatedAt": "2026-10-20T09:00:00Z",
+        "holdings": [
+          {
+            "id": "h1",
+            "kind": "mortgage",
+            "nature": "liability",
+            "currency": "EUR"
+          }
+        ],
+        "valuations": [
+          {
+            "id": "v1",
+            "holdingId": "h1",
+            "asOf": "2026-09-30",
+            "value": {
+              "amount": "-90000.00",
+              "currency": "EUR"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "ownership rows with from and until that overlap, fields 0.3.0 does not define (bounded since 0.4.0)",
+      "section": "5.7",
+      "valid": true,
+      "document": {
+        "assetnotation": "0.3.0",
+        "generatedAt": "2026-07-08T09:00:00Z",
+        "holdings": [
+          {
+            "id": "h1",
+            "kind": "checking",
+            "nature": "asset",
+            "currency": "EUR"
+          }
+        ],
+        "subjects": [
+          {
+            "id": "s1",
+            "type": "person"
+          }
+        ],
+        "ownership": [
+          {
+            "subjectId": "s1",
+            "holdingId": "h1",
+            "share": "1",
+            "until": "2026-06-01"
+          },
+          {
+            "subjectId": "s1",
+            "holdingId": "h1",
+            "share": "0.5",
+            "from": "2026-01-01"
+          }
+        ]
+      }
     }
   ]
 }
