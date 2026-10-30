@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.1.8] - 2026-10-30
+
 ### Added
 
 - Version 0.5.0 of the format: its schema and conformance corpus, mirrored
