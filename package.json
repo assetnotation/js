@@ -60,7 +60,7 @@
 		"prepublishOnly": "npm run gate"
 	},
 	"dependencies": {
-		"@modelcontextprotocol/sdk": "^1.32.1",
+		"@modelcontextprotocol/sdk": "^1.32.2",
 		"ajv": "^8.20.0",
 		"ajv-formats": "^3.0.1",
 		"zod": "^4.6.7"
@@ -72,7 +72,7 @@
 		"prettier": "^3.9.6",
 		"tsup": "^9.0.0",
 		"typescript": "^6.0.3",
-		"typescript-eslint": "^8.71.2",
+		"typescript-eslint": "^8.72.1",
 		"vitest": "^5.0.5"
 	}
 }
