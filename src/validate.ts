@@ -210,12 +210,26 @@ function parentCycles(doc: AssetNotationDocument): string[] {
 	const errors: string[] = [];
 	for (const start of parentOf.keys()) {
 		const cycle = cycleOf.get(start);
-		if (!cycle) continue;
-		const at = cycle.indexOf(start);
-		const chain = [...cycle.slice(at), ...cycle.slice(0, at)];
-		errors.push(`parent cycle: ${chain.join(' -> ')} -> ${start}`);
+		if (cycle) errors.push(`parent cycle: ${loopFrom(cycle, start, parentOf)} -> ${start}`);
 	}
 	return errors;
+}
+
+/** The longest loop spelled out in full; past it, the first holdings and the count. One
+ *  message per holding stays short, so a loop of N holdings costs N, not N squared. */
+const LOOP_SHOWN = 8;
+
+function loopFrom(cycle: string[], start: string, parentOf: Map<string, string>): string {
+	const shown = [start];
+	for (
+		let next = parentOf.get(start);
+		next !== start && next !== undefined && shown.length < LOOP_SHOWN;
+		next = parentOf.get(next)
+	)
+		shown.push(next);
+	return cycle.length <= LOOP_SHOWN
+		? shown.join(' -> ')
+		: `${shown.join(' -> ')} -> ... (${cycle.length} holdings)`;
 }
 
 /** Each holding on a parent loop, with that loop in parent order. Every holding
