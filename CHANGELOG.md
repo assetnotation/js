@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.1.9] - 2026-11-01
+
 ### Added
 
 - `upsertHolding` and the `upsert_holding` tool take `null` for `institution`,
