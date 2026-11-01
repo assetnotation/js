@@ -39,8 +39,12 @@ export interface CsvOptions {
 	delimiter?: ',' | ';' | '\t';
 }
 
+const misplacedQuote = (): Error =>
+	new Error('asset-notation: the CSV has a quote inside an unquoted field');
+
 /** Split one CSV line, honouring quotes: a label may legitimately contain the
- *  delimiter, a quote, or both. */
+ *  delimiter, a quote, or both. A quote opens a field or closes it, nowhere
+ *  else: read anywhere, `1"2"3` would come out as the amount 123. */
 function splitLine(line: string, delimiter: string): string[] {
 	const out: string[] = [];
 	let field = '';
@@ -52,12 +56,17 @@ function splitLine(line: string, delimiter: string): string[] {
 				if (line[i + 1] === '"') {
 					field += '"'; // an escaped quote inside a quoted field
 					i++;
-				} else quoted = false;
+				} else {
+					quoted = false;
+					if (i + 1 < line.length && line[i + 1] !== delimiter) throw misplacedQuote();
+				}
 			} else field += c;
 			continue;
 		}
-		if (c === '"') quoted = true;
-		else if (c === delimiter) {
+		if (c === '"') {
+			if (field !== '') throw misplacedQuote();
+			quoted = true;
+		} else if (c === delimiter) {
 			out.push(field);
 			field = '';
 		} else field += c;

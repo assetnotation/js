@@ -84,13 +84,23 @@ const holdingShape = {
 	currency: CURRENCY.optional(),
 	institution: z
 		.string()
+		.nullable()
 		.optional()
-		.describe('Name of the bank, broker or lender. Matched by name, created when new.'),
+		.describe(
+			'Name of the bank, broker or lender. Matched by name, created when new. null removes it.'
+		),
 	parentId: z
 		.string()
+		.nullable()
 		.optional()
-		.describe('Id of the holding that contains this one, such as the account holding a position.'),
-	instrumentId: z.string().optional(),
+		.describe(
+			'Id of the holding that contains this one, such as the account holding a position. null removes it.'
+		),
+	instrumentId: z
+		.string()
+		.nullable()
+		.optional()
+		.describe('Id of the instrument held. null removes it.'),
 	quantity: DECIMAL.optional().describe('Units held, as a decimal string.'),
 	attributes: z
 		.record(z.string(), z.unknown())

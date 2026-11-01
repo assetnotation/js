@@ -284,6 +284,17 @@ describe('writing a spreadsheet', () => {
 		expect(labels).toEqual(['Compte\njoint', 'Livret']);
 	});
 
+	it('refuses a quote inside an unquoted amount rather than read 1"2"3 as 123', () => {
+		expect(() => fromCsv('label;amount\nLivret;1"2"3\n', { generatedAt: STAMP })).toThrow(
+			/quote inside an unquoted field/
+		);
+		expect(() => fromCsv('label;amount\n"Livret"x;12\n', { generatedAt: STAMP })).toThrow(
+			/quote inside an unquoted field/
+		);
+		const quoted = fromCsv('label;amount\n"Livret ""A""";12\n', { generatedAt: STAMP });
+		expect((quoted.holdings as { label: string }[])[0].label).toBe('Livret "A"');
+	});
+
 	it('refuses an unclosed quote', () => {
 		expect(() => fromCsv('label;amount\n"Compte;12\n', { generatedAt: STAMP })).toThrow(
 			/unclosed quote/

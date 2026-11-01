@@ -2,6 +2,19 @@
 
 ## [Unreleased]
 
+### Added
+
+- `upsertHolding` and the `upsert_holding` tool take `null` for `institution`,
+  `parentId` and `instrumentId`, and remove the link.
+
+### Fixed
+
+- `fromCsv` refuses a quote inside an unquoted field or text after a closing
+  quote, instead of reading `1"2"3` as the amount 123.
+- New ids are minted past an imported one beyond 2^53 instead of looping.
+- The ownership note adds up only the shares held at the same time: two owners
+  in succession, each with the whole, are no longer reported above 1.
+
 ## [0.1.8] - 2026-10-30
 
 ### Added

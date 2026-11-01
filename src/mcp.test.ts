@@ -124,6 +124,22 @@ describe('the MCP tools', () => {
 		expect(stored().institutions).toHaveLength(1);
 	});
 
+	it('upsert_holding removes a relation given as null', () => {
+		call('upsert_holding', { id: 'account', label: 'Account', institution: 'Example Bank' });
+		call('upsert_holding', { id: 'position', label: 'Fund', parentId: 'account' });
+		const unlinked = call('upsert_holding', { id: 'position', parentId: null });
+		expect(unlinked).not.toHaveProperty('parentId');
+		const free = call('upsert_holding', { id: 'account', institution: null });
+		expect(free).not.toHaveProperty('institutionId');
+		expect(free).toMatchObject({ label: 'Account' });
+	});
+
+	it('mints the next id past an imported one beyond 2^53', () => {
+		call('upsert_holding', { id: 'h9007199254740992', label: 'Imported' });
+		const next = call('upsert_holding', { label: 'New' });
+		expect(next).toMatchObject({ id: 'h9007199254740993' });
+	});
+
 	it('refuses a write that would make the document invalid, and leaves the file as it was', () => {
 		call('upsert_holding', { id: 'h1', label: 'A' });
 		const before = readFileSync(path, 'utf8');
