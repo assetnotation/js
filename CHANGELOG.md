@@ -8,7 +8,10 @@
   exclusively, so a link planted beside the document can no longer be written
   through.
 - `validate` finds parent loops in linear time: a long chain of parents no
-  longer stalls it.
+  longer stalls it, and a long loop names its first eight holdings and its size
+  instead of every holding in every message.
+- A temporary file the MCP server fails to write whole is removed instead of
+  staying beside the document.
 - The README no longer says nothing leaves the machine with the MCP server: the
   server uses no network, but the assistant decides where its answers go.
 - `fromCsv` reads a file whose headings are quoted (`"label","amount"`) when no

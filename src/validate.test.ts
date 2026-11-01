@@ -88,6 +88,26 @@ describe('the document-level rules', () => {
 		expect(performance.now() - started).toBeLessThan(2000);
 	});
 
+	it('keeps the messages of a long loop short', () => {
+		const n = 20000;
+		const holdings = Array.from({ length: n }, (_, i) => ({
+			id: `h${i}`,
+			kind: 'brokerage',
+			nature: 'asset',
+			parentId: `h${(i + 1) % n}`
+		}));
+		const started = performance.now();
+		const cycles = validate(doc({ assetnotation: '0.4.0', holdings })).errors.filter((e) =>
+			e.startsWith('parent cycle')
+		);
+		expect(cycles.length).toBe(n);
+		expect(cycles[0]).toBe(
+			'parent cycle: h0 -> h1 -> h2 -> h3 -> h4 -> h5 -> h6 -> h7 -> ... (20000 holdings) -> h0'
+		);
+		expect(Math.max(...cycles.map((e) => e.length))).toBeLessThan(200);
+		expect(performance.now() - started).toBeLessThan(2000);
+	});
+
 	it('names each holding of a loop once, from itself, and a self parent too', () => {
 		const result = validate(
 			doc({

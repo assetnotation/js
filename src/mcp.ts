@@ -19,6 +19,7 @@ import {
 	chmodSync,
 	readFileSync,
 	renameSync,
+	rmSync,
 	statSync,
 	unlinkSync,
 	writeFileSync
@@ -211,7 +212,15 @@ class WealthFile {
 		// A net worth is private: the temporary is born owner-only, and the file
 		// it replaces keeps the permissions it had rather than the umask's.
 		const mode = this.exists() ? statSync(this.path).mode & 0o777 : 0o600;
-		writeFileSync(temporary, text, { flush: true, mode: 0o600, flag: 'wx' });
+		try {
+			writeFileSync(temporary, text, { flush: true, mode: 0o600, flag: 'wx' });
+		} catch (error) {
+			// Created and then not written whole (a full disk, a failed flush): the
+			// partial copy of a net worth must not stay behind. A name that already
+			// existed (EEXIST) is someone else's file and is left alone.
+			if ((error as NodeJS.ErrnoException).code !== 'EEXIST') rmSync(temporary, { force: true });
+			throw error;
+		}
 		try {
 			chmodSync(temporary, mode);
 			// One server process per client: a second one may have written since
