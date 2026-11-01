@@ -1,6 +1,6 @@
 {
 	"name": "asset-notation",
-	"version": "0.1.8",
+	"version": "0.1.9",
 	"description": "Reference implementation of the Asset Notation format: validate a document, convert to and from the spreadsheets people already keep, and serve it to an AI assistant over MCP (stdio, offline) so the assistant can read and maintain what someone owns and owes.",
 	"mcpName": "io.github.assetnotation/asset-notation",
 	"keywords": [
