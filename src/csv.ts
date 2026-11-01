@@ -119,8 +119,18 @@ function quote(value: string, delimiter: string): string {
  *  header alone is deliberate: a label containing a comma would otherwise vote
  *  for the wrong answer. */
 function detectDelimiter(header: string): ',' | ';' | '\t' {
-	const counts = ([';', ',', '\t'] as const).map((d) => [d, splitLine(header, d).length] as const);
+	// A quoted header ("label","amount") cannot be split on a wrong candidate:
+	// that candidate is out of the running, not a reason to refuse the file.
+	const counts = ([';', ',', '\t'] as const).map((d) => [d, fieldsUnder(header, d)] as const);
 	return counts.sort((a, b) => b[1] - a[1])[0][0];
+}
+
+function fieldsUnder(header: string, delimiter: string): number {
+	try {
+		return splitLine(header, delimiter).length;
+	} catch {
+		return 0;
+	}
 }
 
 /**

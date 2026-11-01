@@ -14,4 +14,6 @@
 
 import { run } from './main.js';
 
-process.exit(await run(process.argv.slice(2), process));
+// exitCode and not exit(): exit() ends the process before a pipe has taken
+// the last of stdout, and a large conversion arrives cut under a success code.
+process.exitCode = await run(process.argv.slice(2), process);

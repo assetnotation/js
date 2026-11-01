@@ -258,6 +258,13 @@ export function mergeCsv(
 	// none, by column or by sign, then says so, and takes the currency of the
 	// holding it lands on instead of the converter's EUR.
 	const imported = fromCsv(csv, { ...options, baseCurrency: UNSTATED });
+	// XXX is also a currency a row may STATE. Read once more under another
+	// base: a currency that follows the base was unstated, one that stays XXX
+	// was written in the sheet and is kept.
+	const probe = fromCsv(csv, { ...options, baseCurrency: PROBE });
+	const stated = (probed: Entity | undefined): boolean => probed?.currency === UNSTATED;
+	const probedHoldings = entities(probe, 'holdings');
+	const probedValues = entities(probe, 'valuations').map((v) => v.value as Entity);
 	refuseAmbiguousIds(imported);
 	const fallback = options.baseCurrency ?? text(doc.baseCurrency) ?? 'EUR';
 	const columns = new Set(csvColumns(csv, options.delimiter));
@@ -279,7 +286,7 @@ export function mergeCsv(
 		if (entities(next, 'holdings').some((existing) => existing.id === id)) {
 			for (const field of DEFAULTED_FIELDS) if (!columns.has(field)) delete fields[field];
 		}
-		if (fields.currency === UNSTATED) fields.currency = fallback;
+		if (fields.currency === UNSTATED && !stated(probedHoldings[index])) fields.currency = fallback;
 		const input: HoldingInput = { ...(fields as HoldingInput), id, institution };
 		const result = upsertHolding(next, input);
 		next = result.doc;
@@ -287,7 +294,7 @@ export function mergeCsv(
 	}
 
 	let valuations = 0;
-	for (const v of entities(imported, 'valuations')) {
+	for (const [index, v] of entities(imported, 'valuations').entries()) {
 		const value = v.value as Entity;
 		const holdingId = holdingIds.get(String(v.holdingId)) ?? String(v.holdingId);
 		const holding = entities(next, 'holdings').find((h) => h.id === holdingId);
@@ -296,7 +303,7 @@ export function mergeCsv(
 			asOf: String(v.asOf),
 			amount: String(value.amount),
 			currency:
-				value.currency === UNSTATED
+				value.currency === UNSTATED && !stated(probedValues[index])
 					? (text(holding?.currency) ?? fallback)
 					: String(value.currency),
 			source: text(v.source)
@@ -309,6 +316,8 @@ export function mergeCsv(
 
 /** ISO 4217 for "no currency": what a row that names none is read as. */
 const UNSTATED = 'XXX';
+/** A second base, only to tell a stated XXX from an unstated one. */
+const PROBE = 'XTS';
 
 /**
  * Two rows may share an id when they are the same holding (its history, one
