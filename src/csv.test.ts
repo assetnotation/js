@@ -6,7 +6,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { fromCsv, toCsv } from './csv.js';
-import { netWorth } from './wealth.js';
+import { mergeCsv, netWorth } from './wealth.js';
 import { validate, supportedVersions } from './validate.js';
 
 const STAMP = '2026-08-01T00:00:00Z';
@@ -398,5 +398,34 @@ describe('writing a spreadsheet', () => {
 		expect(
 			((back.valuations as Record<string, unknown>[])[0].value as Record<string, unknown>).amount
 		).toBe('5.00');
+	});
+});
+
+describe('what an audit found the reader getting wrong', () => {
+	it('reads a file whose headings are quoted, with no delimiter given', () => {
+		const doc = fromCsv('"label","amount"\n"Réserve","100"\n', { generatedAt: STAMP });
+		const v = (doc.valuations as Record<string, unknown>[])[0];
+		expect((v.value as Record<string, unknown>).amount).toBe('100');
+	});
+
+	it('keeps a currency the sheet states as XXX instead of reading it as unstated', () => {
+		const empty = fromCsv('label;amount\n', { generatedAt: STAMP });
+		const { doc } = mergeCsv(
+			{ ...empty, baseCurrency: 'EUR' },
+			'label;amount;currency\nRéserve;100;XXX\n',
+			{ baseCurrency: 'EUR' }
+		);
+		const holding = (doc.holdings as Record<string, unknown>[])[0];
+		const v = (doc.valuations as Record<string, unknown>[])[0];
+		expect(holding.currency).toBe('XXX');
+		expect((v.value as Record<string, unknown>).currency).toBe('XXX');
+	});
+
+	it('still gives an unstated row the base currency', () => {
+		const empty = fromCsv('label;amount\n', { generatedAt: STAMP });
+		const { doc } = mergeCsv({ ...empty, baseCurrency: 'EUR' }, 'label;amount\nLivret;50\n', {
+			baseCurrency: 'EUR'
+		});
+		expect((doc.holdings as Record<string, unknown>[])[0].currency).toBe('EUR');
 	});
 });

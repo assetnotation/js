@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- `fromCsv` reads a file whose headings are quoted (`"label","amount"`) when no
+  delimiter is given, instead of refusing it.
+- `mergeCsv` keeps a currency a row states as `XXX`; only a row that states none
+  takes the holding's or the base currency.
+- The command line sets the exit code instead of calling `process.exit()`, so a
+  large conversion piped to another program is never cut short.
+
 ## [0.1.9] - 2026-11-01
 
 ### Added
