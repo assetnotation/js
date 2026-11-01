@@ -266,21 +266,44 @@ function sumOfDecimals(values: string[]): { total: bigint; scale: number } {
  *  specification says they SHOULD sum to at most 1; a consumer would count
  *  the excess in a household total. */
 function overSharedHoldings(doc: AssetNotationDocument): string[] {
-	const sharesOf = new Map<string, string[]>();
+	const rowsOf = new Map<string, Record<string, unknown>[]>();
 	for (const o of list(doc, 'ownership')) {
 		if (typeof o.holdingId !== 'string' || typeof o.share !== 'string' || !DECIMAL.test(o.share)) {
 			continue; // shape is the schema's job
 		}
-		sharesOf.set(o.holdingId, [...(sharesOf.get(o.holdingId) ?? []), o.share]);
+		rowsOf.set(o.holdingId, [...(rowsOf.get(o.holdingId) ?? []), o]);
 	}
 	const notes: string[] = [];
-	for (const [holdingId, shares] of sharesOf) {
+	for (const [holdingId, rows] of rowsOf) {
+		const shares = heaviestConcurrentShares(rows);
 		const { total, scale } = sumOfDecimals(shares);
 		if (total > 10n ** BigInt(scale)) {
 			notes.push(`ownership of holding "${holdingId}" sums to ${shares.join(' + ')}, above 1`);
 		}
 	}
 	return notes;
+}
+
+/** The shares held at the same time that weigh the most. Two owners in
+ *  succession never hold together, so only rows alive at one instant add up;
+ *  that instant is always the start of one of them. */
+function heaviestConcurrentShares(rows: Record<string, unknown>[]): string[] {
+	const bound = (v: unknown): string => (typeof v === 'string' ? v : '');
+	const alive = (row: Record<string, unknown>, at: string): boolean =>
+		bound(row.from) <= at && (row.until === undefined || at < bound(row.until));
+	let heaviest: string[] = [];
+	let most = { total: -1n, scale: 0 };
+	for (const start of rows) {
+		const shares = rows
+			.filter((row) => alive(row, bound(start.from)))
+			.map((row) => String(row.share));
+		const sum = sumOfDecimals(shares);
+		if (sum.total * 10n ** BigInt(most.scale) > most.total * 10n ** BigInt(sum.scale)) {
+			most = sum;
+			heaviest = shares;
+		}
+	}
+	return heaviest;
 }
 
 /**

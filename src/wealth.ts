@@ -54,14 +54,15 @@ export function normalize(doc: AssetNotationDocument, generatedAt: string): Asse
  *  document because `n` starts past the highest number present. */
 export function nextId(doc: AssetNotationDocument, collection: string, prefix: string): string {
 	const taken = new Set(entities(doc, collection).map((e) => String(e.id)));
-	let highest = 0;
+	// BigInt, because an imported id past 2^53 would stop a Number from moving.
+	let highest = 0n;
 	for (const id of taken) {
 		const m = new RegExp(String.raw`^${prefix}(\d+)$`).exec(id);
-		if (m) highest = Math.max(highest, Number(m[1]));
+		if (m && BigInt(m[1]) > highest) highest = BigInt(m[1]);
 	}
-	let candidate = `${prefix}${highest + 1}`;
-	while (taken.has(candidate)) candidate = `${prefix}${Number(candidate.slice(prefix.length)) + 1}`;
-	return candidate;
+	let next = highest + 1n;
+	while (taken.has(`${prefix}${next}`)) next += 1n;
+	return `${prefix}${next}`;
 }
 
 export interface HoldingInput {
@@ -71,10 +72,13 @@ export interface HoldingInput {
 	kind?: string;
 	nature?: 'asset' | 'liability';
 	currency?: string;
-	/** The NAME of the institution; it is matched or created in `institutions`. */
-	institution?: string;
-	parentId?: string;
-	instrumentId?: string;
+	/** The NAME of the institution; it is matched or created in `institutions`.
+	 *  `null` removes the link. */
+	institution?: string | null;
+	/** `null` removes the link to the parent holding. */
+	parentId?: string | null;
+	/** `null` removes the link to the instrument. */
+	instrumentId?: string | null;
 	quantity?: string;
 	attributes?: Record<string, unknown>;
 	openedAt?: string;
@@ -113,8 +117,12 @@ export function upsertHolding(
 			: holdings[index];
 
 	const holding: Entity = { ...base };
-	for (const [key, value] of Object.entries(fields)) if (value !== undefined) holding[key] = value;
-	if (institution !== undefined) {
+	for (const [key, value] of Object.entries(fields)) {
+		if (value === null) delete holding[key];
+		else if (value !== undefined) holding[key] = value;
+	}
+	if (institution === null) delete holding.institutionId;
+	else if (institution !== undefined) {
 		const found = institutionId(next, institution);
 		next = found.doc;
 		holding.institutionId = found.id;

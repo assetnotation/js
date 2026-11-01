@@ -106,6 +106,33 @@ describe('the document-level rules', () => {
 		expect(succession.errors).toEqual([]);
 	});
 
+	it('adds up only the shares held at the same time', () => {
+		const people = [
+			{ id: 's1', type: 'person' },
+			{ id: 's2', type: 'person' }
+		];
+		const succession = validate(
+			doc({
+				subjects: people,
+				ownership: [
+					{ subjectId: 's1', holdingId: 'h1', share: '1', until: '2024-01-01' },
+					{ subjectId: 's2', holdingId: 'h1', share: '1', from: '2024-01-01' }
+				]
+			})
+		);
+		expect(succession.notes).toEqual([]);
+		const together = validate(
+			doc({
+				subjects: people,
+				ownership: [
+					{ subjectId: 's1', holdingId: 'h1', share: '1', until: '2024-06-01' },
+					{ subjectId: 's2', holdingId: 'h1', share: '0.5', from: '2024-01-01' }
+				]
+			})
+		);
+		expect(together.notes).toEqual(['ownership of holding "h1" sums to 1 + 0.5, above 1']);
+	});
+
 	it('names a holding owned more than once over, exactly and never by a float', () => {
 		const result = validate(
 			doc({
