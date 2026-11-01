@@ -8,11 +8,11 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
 	chmodSync,
-	mkdirSync,
 	mkdtempSync,
 	readFileSync,
 	readdirSync,
 	statSync,
+	symlinkSync,
 	writeFileSync,
 	existsSync
 } from 'node:fs';
@@ -62,6 +62,19 @@ describe('the MCP tools', () => {
 			'validate'
 		]);
 		for (const tool of Object.values(tools)) expect(tool.description.length).toBeGreaterThan(40);
+	});
+
+	it('never writes through a link planted at the old predictable temporary name', () => {
+		const victim = join(dir, `victim-${n}.txt`);
+		writeFileSync(victim, 'keep me');
+		symlinkSync(victim, `${path}.${process.pid}.tmp`);
+		call('upsert_holding', { label: 'Current account', kind: 'checking', currency: 'EUR' });
+		expect(readFileSync(victim, 'utf8')).toBe('keep me');
+		expect(
+			readdirSync(dir).filter(
+				(f) => f.startsWith(`wealth-${n}.json.`) && f !== `wealth-${n}.json.${process.pid}.tmp`
+			)
+		).toEqual([]);
 	});
 
 	it('upsert_holding creates a minimal valid document of the newest version', () => {
@@ -398,15 +411,7 @@ describe('the MCP tools', () => {
 		expect(call('net_worth')).toMatchObject({ byCurrency: [{ assets: '300' }] });
 	});
 
-	it('a write that fails leaves the previous file whole and no stray file', () => {
-		call('upsert_holding', { id: 'h1', label: 'Livret' });
-		const before = readFileSync(path, 'utf8');
-		mkdirSync(`${path}.${process.pid}.tmp`);
-		expect(() => call('upsert_holding', { id: 'h1', label: 'Livret A' })).toThrow();
-		expect(readFileSync(path, 'utf8')).toBe(before);
-	});
-
-	it('a write refuses to erase what another writer saved since the read', () => {
+	it('a write refuses to erase what another writer saved since the read, and leaves no stray file', () => {
 		call('upsert_holding', { id: 'h1', label: 'Livret' });
 		let theirs = '';
 		const racing = Object.fromEntries(
@@ -423,7 +428,7 @@ describe('the MCP tools', () => {
 			/changed since it was read/
 		);
 		expect(readFileSync(path, 'utf8')).toBe(theirs);
-		expect(existsSync(`${path}.${process.pid}.tmp`)).toBe(false);
+		expect(readdirSync(dir).filter((f) => f.startsWith(`wealth-${n}.json.`))).toEqual([]);
 		call('upsert_holding', { id: 'h2', label: 'PEA' });
 		expect((stored().holdings as unknown[]).length).toBe(2);
 	});

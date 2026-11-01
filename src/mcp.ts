@@ -1,8 +1,8 @@
 /**
  * The document as a set of tools an AI assistant can call, over the Model
- * Context Protocol on standard input and output. The assistant runs on the
- * same machine as the file; nothing here opens a socket or reads anything but
- * that one file.
+ * Context Protocol on standard input and output. Nothing here opens a socket
+ * or reads anything but that one file; what the client does with an answer,
+ * including sending it to a remote model, is the client's.
  *
  * Every tool is a plain function over the file (`wealthTools`), so each can be
  * tested without a transport; `serve` is the thin layer that hands them to the
@@ -23,6 +23,7 @@ import {
 	unlinkSync,
 	writeFileSync
 } from 'node:fs';
+import { randomBytes } from 'node:crypto';
 import { dirname } from 'node:path';
 import type { Readable, Writable } from 'node:stream';
 import { z } from 'zod';
@@ -203,12 +204,14 @@ class WealthFile {
 		mkdirSync(dirname(this.path), { recursive: true });
 		// Written beside, then renamed over: an interrupted write or a full disk
 		// leaves the previous file whole instead of a truncated one.
-		const temporary = `${this.path}.${process.pid}.tmp`;
+		// A random name created exclusively: a predictable one could be a link
+		// planted by another user, and writing through it would truncate its target.
+		const temporary = `${this.path}.${randomBytes(8).toString('hex')}.tmp`;
 		const text = `${JSON.stringify(final, null, 2)}\n`;
 		// A net worth is private: the temporary is born owner-only, and the file
 		// it replaces keeps the permissions it had rather than the umask's.
 		const mode = this.exists() ? statSync(this.path).mode & 0o777 : 0o600;
-		writeFileSync(temporary, text, { flush: true, mode: 0o600 });
+		writeFileSync(temporary, text, { flush: true, mode: 0o600, flag: 'wx' });
 		try {
 			chmodSync(temporary, mode);
 			// One server process per client: a second one may have written since

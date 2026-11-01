@@ -75,6 +75,40 @@ describe('the document-level rules', () => {
 		expect(result.errors).toEqual(['parent cycle: h1 -> h2 -> h1', 'parent cycle: h2 -> h1 -> h2']);
 	});
 
+	it('walks a long chain of parents in linear time', () => {
+		const holdings = Array.from({ length: 20000 }, (_, i) => ({
+			id: `h${i}`,
+			kind: 'brokerage',
+			nature: 'asset',
+			...(i > 0 ? { parentId: `h${i - 1}` } : {})
+		}));
+		const started = performance.now();
+		const result = validate(doc({ assetnotation: '0.4.0', holdings }));
+		expect(result.errors.filter((e) => e.startsWith('parent cycle'))).toEqual([]);
+		expect(performance.now() - started).toBeLessThan(2000);
+	});
+
+	it('names each holding of a loop once, from itself, and a self parent too', () => {
+		const result = validate(
+			doc({
+				assetnotation: '0.4.0',
+				holdings: [
+					{ id: 'a', kind: 'brokerage', nature: 'asset', parentId: 'b' },
+					{ id: 'b', kind: 'brokerage', nature: 'asset', parentId: 'c' },
+					{ id: 'c', kind: 'brokerage', nature: 'asset', parentId: 'a' },
+					{ id: 'd', kind: 'brokerage', nature: 'asset', parentId: 'd' },
+					{ id: 'e', kind: 'brokerage', nature: 'asset', parentId: 'a' }
+				]
+			})
+		);
+		expect(result.errors.filter((e) => e.startsWith('parent cycle'))).toEqual([
+			'parent cycle: a -> b -> c -> a',
+			'parent cycle: b -> c -> a -> b',
+			'parent cycle: c -> a -> b -> c',
+			'parent cycle: d -> d'
+		]);
+	});
+
 	it('refuses two ownership rows of one subject on one holding that overlap in time', () => {
 		const subjects = [{ id: 's1', type: 'person' }];
 		const overlapping = validate(

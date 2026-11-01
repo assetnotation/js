@@ -4,6 +4,13 @@
 
 ### Fixed
 
+- The MCP server writes its temporary file under a random name, created
+  exclusively, so a link planted beside the document can no longer be written
+  through.
+- `validate` finds parent loops in linear time: a long chain of parents no
+  longer stalls it.
+- The README no longer says nothing leaves the machine with the MCP server: the
+  server uses no network, but the assistant decides where its answers go.
 - `fromCsv` reads a file whose headings are quoted (`"label","amount"`) when no
   delimiter is given, instead of refusing it.
 - `mergeCsv` keeps a currency a row states as `XXX`; only a row that states none

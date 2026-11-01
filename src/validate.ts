@@ -206,19 +206,39 @@ function parentCycles(doc: AssetNotationDocument): string[] {
 	for (const h of list(doc, 'holdings')) {
 		if (typeof h.id === 'string' && typeof h.parentId === 'string') parentOf.set(h.id, h.parentId);
 	}
+	const cycleOf = cyclesOf(parentOf);
 	const errors: string[] = [];
 	for (const start of parentOf.keys()) {
-		const chain = [start];
-		for (let next = parentOf.get(start); next !== undefined; next = parentOf.get(next)) {
-			if (next === start) {
-				errors.push(`parent cycle: ${chain.join(' -> ')} -> ${start}`);
-				break;
-			}
-			if (chain.includes(next)) break; // the loop is elsewhere, reported from its own start
-			chain.push(next);
-		}
+		const cycle = cycleOf.get(start);
+		if (!cycle) continue;
+		const at = cycle.indexOf(start);
+		const chain = [...cycle.slice(at), ...cycle.slice(0, at)];
+		errors.push(`parent cycle: ${chain.join(' -> ')} -> ${start}`);
 	}
 	return errors;
+}
+
+/** Each holding on a parent loop, with that loop in parent order. Every holding
+ *  is walked once: a long chain without a loop costs its length, not its cube. */
+function cyclesOf(parentOf: Map<string, string>): Map<string, string[]> {
+	const done = new Set<string>();
+	const cycleOf = new Map<string, string[]>();
+	for (const start of parentOf.keys()) {
+		const path: string[] = [];
+		const onPath = new Map<string, number>();
+		let node: string | undefined = start;
+		while (node !== undefined && !done.has(node) && !onPath.has(node)) {
+			onPath.set(node, path.length);
+			path.push(node);
+			node = parentOf.get(node);
+		}
+		if (node !== undefined && onPath.has(node)) {
+			const cycle = path.slice(onPath.get(node));
+			for (const member of cycle) cycleOf.set(member, cycle);
+		}
+		for (const visited of path) done.add(visited);
+	}
+	return cycleOf;
 }
 
 /** Two ownership rows of one subject on one holding whose intervals overlap
