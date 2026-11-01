@@ -50,9 +50,11 @@ when both fit, the delimiter decides.
 ## Use it from an AI assistant
 
 `asset-notation mcp <file.json>` is a [Model Context Protocol](https://modelcontextprotocol.io)
-server over stdio. The assistant reads and maintains the file; nothing leaves the
-machine, and no network is used. The file is created on the first holding when it
-does not exist.
+server over stdio. The assistant reads and maintains the file. The server itself
+opens no socket and uses no network, but every answer it gives goes to the
+assistant, and the assistant decides where it goes next: an assistant whose model
+runs in the cloud sends the document to its provider. Choose the client with that
+in mind. The file is created on the first holding when it does not exist.
 
 In the configuration file of an assistant's desktop app, or of any MCP client,
 under `mcpServers`:
