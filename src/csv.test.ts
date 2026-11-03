@@ -421,6 +421,21 @@ describe('what an audit found the reader getting wrong', () => {
 		expect((v.value as Record<string, unknown>).currency).toBe('XXX');
 	});
 
+	it('keeps the nature and kind of an existing holding when their cells are empty', () => {
+		const start = fromCsv('id;label;amount;nature;kind\nh1;Emprunt;90000;liability;loan\n', {
+			generatedAt: STAMP,
+			baseCurrency: 'EUR'
+		});
+		const { doc } = mergeCsv(start, 'id;label;amount;nature;kind\nh1;Emprunt;90000;;\n', {
+			generatedAt: STAMP,
+			baseCurrency: 'EUR'
+		});
+		const holding = (doc.holdings as Record<string, unknown>[])[0];
+		expect(holding.nature).toBe('liability');
+		expect(holding.kind).toBe('loan');
+		expect(netWorth(doc).byCurrency[0].net).toMatch(/^-90000/);
+	});
+
 	it('still gives an unstated row the base currency', () => {
 		const empty = fromCsv('label;amount\n', { generatedAt: STAMP });
 		const { doc } = mergeCsv({ ...empty, baseCurrency: 'EUR' }, 'label;amount\nLivret;50\n', {
