@@ -17,7 +17,7 @@
  */
 
 import { supportedVersions, type AssetNotationDocument } from './validate.js';
-import { latestValuation } from './document.js';
+import { latestValuations } from './document.js';
 
 /** Columns, in the order they are written. `institution` carries a NAME, not an
  *  id: a spreadsheet has "Crédit Mutuel" in it, never "i1". */
@@ -101,12 +101,21 @@ const FORMULA_START = /^[=+\-@\t\r]/;
 /** A text cell a spreadsheet would run, kept as text by a leading apostrophe.
  *  Amounts never go through here: a negative figure is a number, not a formula. */
 function asText(value: string): string {
-	return FORMULA_START.test(value) ? `'${value}` : value;
+	return guarded(value) ? `'${value}` : value;
+}
+
+/**
+ * What the export protects: a formula start, and a value that already reads as
+ * a protected one (`'=Reserve`), so the apostrophe it carries survives the
+ * round trip instead of being taken for the exporter's.
+ */
+function guarded(value: string): boolean {
+	return FORMULA_START.test(value) || (value.startsWith("'") && guarded(value.slice(1)));
 }
 
 /** The apostrophe `asText` put back off, so a file read back is the file written. */
 function fromText(value: string): string {
-	return value.startsWith("'") && FORMULA_START.test(value.slice(1)) ? value.slice(1) : value;
+	return value.startsWith("'") && guarded(value.slice(1)) ? value.slice(1) : value;
 }
 
 function quote(value: string, delimiter: string): string {
@@ -243,9 +252,10 @@ export function toCsv(doc: AssetNotationDocument, options: CsvOptions = {}): str
 	}
 
 	const lines = [COLUMNS.join(delimiter)];
+	const latest = latestValuations(doc);
 	for (const raw of Array.isArray(doc.holdings) ? doc.holdings : []) {
 		const h = raw as Record<string, unknown>;
-		const v = latestValuation(doc, h.id);
+		const v = latest.get(h.id);
 		const value = (v?.value ?? {}) as Record<string, unknown>;
 		const row = [
 			asText(String(h.id ?? '')),

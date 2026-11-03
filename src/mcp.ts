@@ -145,7 +145,8 @@ class WealthFile {
 
 	constructor(
 		readonly path: string,
-		private readonly now: () => string
+		private readonly now: () => string,
+		private readonly sync: (directory: string) => void = syncDirectory
 	) {}
 
 	exists(): boolean {
@@ -239,7 +240,15 @@ class WealthFile {
 			throw error;
 		}
 		this.seen = text;
-		syncDirectory(dirname(this.path));
+		try {
+			this.sync(dirname(this.path));
+		} catch (error) {
+			// The change is in the file: a refusal that said nothing was written would
+			// have the caller run it again, and a holding created twice.
+			throw new Refusal(
+				`the change WAS written to ${this.path}, but its directory could not be synced (${[(error as NodeJS.ErrnoException).code, (error as Error).message].filter(Boolean).join(': ')}): it may not survive a power cut. Read the document before running the tool again, or the change is made twice`
+			);
+		}
 		return final;
 	}
 }
@@ -271,9 +280,10 @@ function syncDirectory(directory: string): void {
 /** The tools over one file. `now` is injectable so a test writes the same bytes twice. */
 export function wealthTools(
 	path: string,
-	now: () => string = () => new Date().toISOString()
+	now: () => string = () => new Date().toISOString(),
+	sync: (directory: string) => void = syncDirectory
 ): Tool[] {
-	const file = new WealthFile(path, now);
+	const file = new WealthFile(path, now, sync);
 	return [
 		{
 			name: 'read_document',

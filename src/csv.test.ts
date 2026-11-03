@@ -229,6 +229,35 @@ describe('reading a spreadsheet as people actually save it', () => {
 		expect((back.holdings as { label: string }[])[0].label).toBe('=HYPERLINK("x")');
 	});
 
+	it('keeps a literal leading apostrophe before a formula start across a round trip', () => {
+		const doc = fromCsv(`label;amount\n"'=Réserve";5\n"''+x";6\n'abc;7\n`, { generatedAt: STAMP });
+		const labels = (d: Record<string, unknown>) =>
+			(d.holdings as { label: string }[]).map((h) => h.label);
+		expect(labels(doc)).toEqual(['=Réserve', "'+x", "'abc"]);
+		const back = fromCsv(toCsv(doc), { generatedAt: STAMP });
+		expect(labels(back)).toEqual(labels(doc));
+		const literal = fromCsv(toCsv(back), { generatedAt: STAMP });
+		expect(labels(literal)).toEqual(labels(doc));
+	});
+
+	it('reads the latest valuations of a large history in one pass', () => {
+		const rows = Array.from({ length: 1000 }, (_, i) => `Compte ${i};EUR;${i}`).join('\n');
+		const doc = fromCsv(`label;currency;amount\n${rows}\n`, { generatedAt: STAMP });
+		const holdings = doc.holdings as { id: string }[];
+		doc.valuations = holdings.flatMap((h) =>
+			Array.from({ length: 180 }, (_, d) => ({
+				id: `${h.id}-${d}`,
+				holdingId: h.id,
+				asOf: new Date(Date.UTC(2026, 0, 1 + d)).toISOString().slice(0, 10),
+				value: { amount: String(d), currency: 'EUR' }
+			}))
+		);
+		const debut = performance.now();
+		const net = netWorth(doc);
+		expect(performance.now() - debut).toBeLessThan(2000);
+		expect(net.byCurrency[0].net).toBe(String(179 * 1000));
+	});
+
 	it('refuses an empty file rather than inventing an empty document', () => {
 		expect(() => fromCsv('   \n')).toThrow(/empty/);
 	});

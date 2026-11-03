@@ -9,7 +9,7 @@
  */
 
 import { csvColumns, fromCsv, readCsv, type FromCsvOptions } from './csv.js';
-import { entities, latestValuation, text, type Entity } from './document.js';
+import { entities, latestValuations, text, type Entity } from './document.js';
 import { isDecimal, negateDecimal, sumDecimals } from './decimal.js';
 import { supportedVersions, type AssetNotationDocument } from './validate.js';
 
@@ -183,6 +183,7 @@ export interface NetWorth {
  * own is counted too, so a document should value one or the other.
  */
 export function netWorth(doc: AssetNotationDocument): NetWorth {
+	const latest = latestValuations(doc);
 	const assets = new Map<string, string[]>();
 	const liabilities = new Map<string, string[]>();
 	const unvaluedHoldingIds: string[] = [];
@@ -190,7 +191,7 @@ export function netWorth(doc: AssetNotationDocument): NetWorth {
 	let valuedHoldings = 0;
 
 	for (const h of entities(doc, 'holdings')) {
-		const v = latestValuation(doc, h.id);
+		const v = latest.get(h.id);
 		const value = v?.value;
 		const amount =
 			typeof value === 'object' && value !== null ? (value as Entity).amount : undefined;
@@ -226,8 +227,9 @@ export function netWorth(doc: AssetNotationDocument): NetWorth {
  *  what it was last worth, instead of ids to chase. */
 export function listHoldings(doc: AssetNotationDocument): Entity[] {
 	const names = new Map(entities(doc, 'institutions').map((i) => [i.id, i.name]));
+	const latest = latestValuations(doc);
 	return entities(doc, 'holdings').map((h) => {
-		const v = latestValuation(doc, h.id);
+		const v = latest.get(h.id);
 		return {
 			...h,
 			institution: names.get(h.institutionId) ?? null,
