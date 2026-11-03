@@ -28,13 +28,17 @@ export function instantOf(asOf: unknown): number {
 	return Number.isNaN(t) ? -Infinity : t;
 }
 
-/** The most recent valuation of a holding, or undefined when it has none. */
-export function latestValuation(
-	doc: AssetNotationDocument,
-	holdingId: unknown
-): Entity | undefined {
-	return entities(doc, 'valuations')
-		.filter((v) => v.holdingId === holdingId)
-		.sort((a, b) => instantOf(a.asOf) - instantOf(b.asOf))
-		.pop();
+/**
+ * The latest valuation of every holding, in one pass over the valuations: a
+ * lookup per holding filtered the whole list each time, 180 million entries
+ * read for a thousand holdings valued daily for six months. On a tie, the one
+ * listed last wins, as the stable sort it replaces gave.
+ */
+export function latestValuations(doc: AssetNotationDocument): Map<unknown, Entity> {
+	const latest = new Map<unknown, Entity>();
+	for (const v of entities(doc, 'valuations')) {
+		const held = latest.get(v.holdingId);
+		if (!held || instantOf(v.asOf) >= instantOf(held.asOf)) latest.set(v.holdingId, v);
+	}
+	return latest;
 }

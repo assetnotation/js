@@ -50,6 +50,31 @@ beforeEach(() => {
 	tools = Object.fromEntries(wealthTools(path, () => NOW).map((t) => [t.name, t]));
 });
 
+describe('a write whose directory cannot be synced', () => {
+	it('says the change was written, so it is not run twice', () => {
+		const failing = Object.fromEntries(
+			wealthTools(
+				path,
+				() => NOW,
+				() => {
+					throw Object.assign(new Error('io'), { code: 'EIO' });
+				}
+			).map((t) => [t.name, t])
+		);
+		let caught: unknown;
+		try {
+			failing.upsert_holding.run({ label: 'Current account', kind: 'checking', currency: 'EUR' });
+		} catch (error) {
+			caught = error;
+		}
+		expect(caught).toBeInstanceOf(Refusal);
+		expect((caught as Refusal).message).toMatch(
+			/WAS written .* \(EIO: io\).* Read the document before running the tool again/
+		);
+		expect((stored().holdings as unknown[]).length).toBe(1);
+	});
+});
+
 describe('the MCP tools', () => {
 	it('exposes the seven tools, with a description an assistant can act on', () => {
 		expect(Object.keys(tools).sort()).toEqual([
