@@ -240,6 +240,13 @@ describe('reading a spreadsheet as people actually save it', () => {
 		expect(labels(literal)).toEqual(labels(doc));
 	});
 
+	it('reads and writes a cell of many apostrophes without overflowing', () => {
+		const label = `${"'".repeat(20_000)}x`;
+		const doc = fromCsv(`label;amount\n${label};1\n`, { generatedAt: STAMP });
+		expect((doc.holdings as { label: string }[])[0].label).toBe(label);
+		expect(toCsv(doc)).toContain(label);
+	});
+
 	it('reads the latest valuations of a large history in one pass', () => {
 		const rows = Array.from({ length: 1000 }, (_, i) => `Compte ${i};EUR;${i}`).join('\n');
 		const doc = fromCsv(`label;currency;amount\n${rows}\n`, { generatedAt: STAMP });

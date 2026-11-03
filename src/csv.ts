@@ -110,7 +110,8 @@ function asText(value: string): string {
  * round trip instead of being taken for the exporter's.
  */
 function guarded(value: string): boolean {
-	return FORMULA_START.test(value) || (value.startsWith("'") && guarded(value.slice(1)));
+	// Without recursion: a cell of ten thousand apostrophes must not overflow the stack.
+	return FORMULA_START.test(value.replace(/^'+/, ''));
 }
 
 /** The apostrophe `asText` put back off, so a file read back is the file written. */
