@@ -8,7 +8,7 @@
  * Amounts are decimal strings all the way through and are summed exactly.
  */
 
-import { csvColumns, fromCsv, type FromCsvOptions } from './csv.js';
+import { csvColumns, fromCsv, readCsv, type FromCsvOptions } from './csv.js';
 import { entities, latestValuation, text, type Entity } from './document.js';
 import { isDecimal, negateDecimal, sumDecimals } from './decimal.js';
 import { supportedVersions, type AssetNotationDocument } from './validate.js';
@@ -257,7 +257,7 @@ export function mergeCsv(
 	// Read with the ISO code for "no currency" as the base: a row that names
 	// none, by column or by sign, then says so, and takes the currency of the
 	// holding it lands on instead of the converter's EUR.
-	const imported = fromCsv(csv, { ...options, baseCurrency: UNSTATED });
+	const { doc: imported, blank } = readCsv(csv, { ...options, baseCurrency: UNSTATED });
 	// XXX is also a currency a row may STATE. Read once more under another
 	// base: a currency that follows the base was unstated, one that stays XXX
 	// was written in the sheet and is kept.
@@ -280,11 +280,13 @@ export function mergeCsv(
 		// fromCsv mints `h<row>` for a row whose id cell is empty.
 		const idGiven = columns.has('id') && h.id !== `h${String(index + 1)}`;
 		const id = targetHoldingId(next, h, institution, idGiven);
-		// On a holding that exists, a column the sheet does not have says nothing:
-		// the converter's defaults (an `other` asset in EUR) must not turn a debt
-		// into an asset.
+		// On a holding that exists, a column the sheet does not have, or a cell it
+		// left empty, says nothing: the converter's defaults (an `other` asset in
+		// EUR) must not turn a debt into an asset.
 		if (entities(next, 'holdings').some((existing) => existing.id === id)) {
-			for (const field of DEFAULTED_FIELDS) if (!columns.has(field)) delete fields[field];
+			for (const field of DEFAULTED_FIELDS) {
+				if (!columns.has(field) || blank[index].has(field)) delete fields[field];
+			}
 		}
 		if (fields.currency === UNSTATED && !stated(probedHoldings[index])) fields.currency = fallback;
 		const input: HoldingInput = { ...(fields as HoldingInput), id, institution };

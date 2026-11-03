@@ -297,6 +297,20 @@ export function csvColumns(text: string, delimiter?: ',' | ';' | '\t'): string[]
 }
 
 export function fromCsv(text: string, options: FromCsvOptions = {}): AssetNotationDocument {
+	return readCsv(text, options).doc;
+}
+
+/** The fields a row left blank and the reader filled with its default. */
+const BLANK_DEFAULTS = ['kind', 'nature'] as const;
+
+/**
+ * `fromCsv`, plus, for each holding in order, the defaulted fields whose cell
+ * was EMPTY: a merge must not read `nature` left blank as a stated `asset`.
+ */
+export function readCsv(
+	text: string,
+	options: FromCsvOptions = {}
+): { doc: AssetNotationDocument; blank: ReadonlySet<string>[] } {
 	const lines = records(text).filter((l) => l.trim() !== '');
 	if (lines.length === 0) throw new Error('asset-notation: the CSV is empty');
 
@@ -317,6 +331,7 @@ export function fromCsv(text: string, options: FromCsvOptions = {}): AssetNotati
 	};
 
 	const holdings: Record<string, unknown>[] = [];
+	const blank: ReadonlySet<string>[] = [];
 	const valuations: Record<string, unknown>[] = [];
 	const institutions = new Map<string, string>();
 
@@ -360,6 +375,7 @@ export function fromCsv(text: string, options: FromCsvOptions = {}): AssetNotati
 			holding.institutionId = instId;
 		}
 		holdings.push(holding);
+		blank.push(new Set(BLANK_DEFAULTS.filter((field) => at(row, field) === '')));
 
 		// The format carries a debt as what is owed, zero or more, and the net
 		// worth subtracts it: a negative one would raise the total. Reading its
@@ -393,5 +409,5 @@ export function fromCsv(text: string, options: FromCsvOptions = {}): AssetNotati
 	}
 	doc.holdings = holdings;
 	if (valuations.length > 0) doc.valuations = valuations;
-	return doc;
+	return { doc, blank };
 }
