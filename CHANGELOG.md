@@ -7,6 +7,8 @@
 - A CSV value that starts with an apostrophe before a formula character
   (`'=Reserve`) keeps it across an export and an import, instead of losing it
   to the escape of the exporter.
+  The check strips the leading apostrophes in one pass, so a cell of thousands
+  of them no longer overflows the stack.
 - The MCP server says a change WAS written when only the directory sync fails,
   so the caller reads the document instead of running the tool twice.
 - `netWorth`, `listHoldings` and `toCsv` read the latest valuation of every
