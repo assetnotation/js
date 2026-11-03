@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.1.10] - 2026-11-03
+
 ### Fixed
 
 - `mergeCsv` keeps the nature and kind of an existing holding when the row
