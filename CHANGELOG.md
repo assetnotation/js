@@ -4,6 +4,11 @@
 
 ### Fixed
 
+- `mergeCsv` keeps the nature and kind of an existing holding when the row
+  leaves those cells empty: `Emprunt;90000;` under a `nature` column no longer
+  turns a debt into an asset.
+- The MCP server syncs the directory after renaming the document into place, so
+  a power cut cannot bring back the previous file.
 - The MCP server writes its temporary file under a random name, created
   exclusively, so a link planted beside the document can no longer be written
   through.

@@ -17,6 +17,9 @@ import {
 	existsSync,
 	mkdirSync,
 	chmodSync,
+	closeSync,
+	fsyncSync,
+	openSync,
 	readFileSync,
 	renameSync,
 	rmSync,
@@ -236,7 +239,32 @@ class WealthFile {
 			throw error;
 		}
 		this.seen = text;
+		syncDirectory(dirname(this.path));
 		return final;
+	}
+}
+
+/** Codes a file system answers when a directory cannot be synced at all. */
+const UNSYNCABLE = new Set(['EINVAL', 'ENOTSUP', 'EISDIR', 'EPERM', 'EACCES']);
+
+/**
+ * The rename is only durable once the directory that holds it is: without
+ * this, a power cut can bring back the previous file, or no file at all.
+ * A system that cannot open or sync a directory (Windows) has nothing to do.
+ */
+function syncDirectory(directory: string): void {
+	let fd: number;
+	try {
+		fd = openSync(directory, 'r');
+	} catch {
+		return;
+	}
+	try {
+		fsyncSync(fd);
+	} catch (error) {
+		if (!UNSYNCABLE.has(String((error as NodeJS.ErrnoException).code))) throw error;
+	} finally {
+		closeSync(fd);
 	}
 }
 
