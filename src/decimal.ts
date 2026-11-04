@@ -28,7 +28,9 @@ function unscaled(total: bigint, scale: number): string {
 /** The exact sum of decimal strings, with as many decimals as the most
  *  precise of them. `["10", "-2.50"]` is `"7.50"`. */
 export function sumDecimals(values: string[]): string {
-	const scale = Math.max(0, ...values.map((v) => v.split('.')[1]?.length ?? 0));
+	// A loop, not a spread: spread into Math.max, a large portfolio passed more
+	// arguments than a call may take and the sum threw RangeError.
+	const scale = values.reduce((most, v) => Math.max(most, v.split('.')[1]?.length ?? 0), 0);
 	const total = values.reduce((acc, v) => acc + scaled(v, scale), 0n);
 	return unscaled(total, scale);
 }

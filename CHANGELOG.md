@@ -11,6 +11,8 @@
   of them no longer overflows the stack.
 - The MCP server says a change WAS written when only the directory sync fails,
   so the caller reads the document instead of running the tool twice.
+- `sumDecimals` finds the scale in a loop: spread into one call, a large
+  portfolio passed too many arguments and the sum threw `RangeError`.
 - `netWorth`, `listHoldings` and `toCsv` read the latest valuation of every
   holding in one pass over the valuations, instead of one pass per holding.
 
