@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.1.11] - 2026-11-05
+
 ### Fixed
 
 - A CSV value that starts with an apostrophe before a formula character
