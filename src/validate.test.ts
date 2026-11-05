@@ -187,6 +187,51 @@ describe('the document-level rules', () => {
 		expect(together.notes).toEqual(['ownership of holding "h1" sums to 1 + 0.5, above 1']);
 	});
 
+	it('adds up concurrent shares of a large import in linear time', () => {
+		const n = 20000;
+		const ownership = Array.from({ length: n }, (_, i) => ({
+			subjectId: `s${i}`,
+			holdingId: 'h1',
+			share: '0.0001',
+			from: `2026-01-01T00:00:${String(i % 60).padStart(2, '0')}Z`
+		}));
+		const subjects = ownership.map((o) => ({ id: o.subjectId, type: 'person' }));
+		const started = performance.now();
+		const result = validate(doc({ subjects, ownership }));
+		expect(result.notes).toEqual([
+			expect.stringMatching(/^ownership of holding "h1" sums to 0\.0001 \+ /)
+		]);
+		expect(performance.now() - started).toBeLessThan(2000);
+	});
+
+	it('counts no row that ends where it starts', () => {
+		const result = validate(
+			doc({
+				subjects: [],
+				ownership: [
+					{ subjectId: 's1', holdingId: 'h1', share: '1', from: '2024-01-01', until: '2024-01-01' },
+					{ subjectId: 's2', holdingId: 'h1', share: '1', from: '2024-01-01' }
+				]
+			})
+		);
+		expect(result.notes.filter((note) => note.startsWith('ownership of holding'))).toEqual([]);
+	});
+
+	it('refuses, never throws, on a version or an id whose toString was replaced', () => {
+		const version = validate({ assetnotation: { toString: null } });
+		expect(version.valid).toBe(false);
+		expect(version.errors).toEqual([
+			expect.stringMatching(/^no bundled schema for declared version "\{"toString":null\}"/)
+		]);
+		const id = validate(
+			doc({
+				assetnotation: '0.4.0',
+				holdings: [{ id: { toString: null }, kind: 'x', nature: 'asset' }]
+			})
+		);
+		expect(id.valid).toBe(false);
+	});
+
 	it('names a holding owned more than once over, exactly and never by a float', () => {
 		const result = validate(
 			doc({

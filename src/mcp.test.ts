@@ -18,7 +18,7 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { Refusal, wealthTools, type Tool } from './mcp.js';
+import { Refusal, annotationsOf, wealthTools, type Tool } from './mcp.js';
 import { supportedVersions } from './validate.js';
 
 const NOW = '2026-10-19T10:00:00.000Z';
@@ -76,6 +76,18 @@ describe('a write whose directory cannot be synced', () => {
 });
 
 describe('the MCP tools', () => {
+	it('declare as destructive the tools that may replace what the file holds', () => {
+		const destructive = Object.values(tools)
+			.filter((tool) => annotationsOf(tool).destructiveHint)
+			.map((tool) => tool.name);
+		expect(destructive).toEqual(['upsert_holding', 'import_csv']);
+		expect(annotationsOf(tools.add_valuation)).toEqual({
+			readOnlyHint: false,
+			destructiveHint: false,
+			openWorldHint: false
+		});
+	});
+
 	it('exposes the seven tools, with a description an assistant can act on', () => {
 		expect(Object.keys(tools).sort()).toEqual([
 			'add_valuation',

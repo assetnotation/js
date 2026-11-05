@@ -21,6 +21,11 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+/** A value as text for a message. `String()` throws on an object whose
+ *  `toString` was replaced, and an untrusted document may carry one. */
+const printed = (value: unknown): string =>
+	typeof value === 'string' ? value : (JSON.stringify(value) ?? String(value));
+
 /** Collections whose members carry an `id` unique within that collection. */
 const COLLECTIONS = [
 	'subjects',
@@ -141,21 +146,21 @@ function integrity(
 	};
 
 	for (const h of list(doc, 'holdings')) {
-		const from = `holding ${String(h.id)}`;
+		const from = `holding ${printed(h.id)}`;
 		ref(from, 'parentId', h.parentId, 'holdings');
 		ref(from, 'institutionId', h.institutionId, 'institutions');
 		ref(from, 'instrumentId', h.instrumentId, 'instruments');
 		if (Array.isArray(h.links)) {
 			for (const link of h.links.filter(isObject)) {
-				ref(from, `link[${String(link.rel)}].holdingId`, link.holdingId, 'holdings');
+				ref(from, `link[${printed(link.rel)}].holdingId`, link.holdingId, 'holdings');
 			}
 		}
 	}
 	for (const v of list(doc, 'valuations')) {
-		ref(`valuation ${String(v.id)}`, 'holdingId', v.holdingId, 'holdings');
+		ref(`valuation ${printed(v.id)}`, 'holdingId', v.holdingId, 'holdings');
 	}
 	for (const t of list(doc, 'transactions')) {
-		const from = `transaction ${String(t.id)}`;
+		const from = `transaction ${printed(t.id)}`;
 		ref(from, 'holdingId', t.holdingId, 'holdings');
 		ref(from, 'counterpartHoldingId', t.counterpartHoldingId, 'holdings');
 		ref(from, 'instrumentId', t.instrumentId, 'instruments');
@@ -187,14 +192,14 @@ function negativeLiabilities(doc: AssetNotationDocument): string[] {
 			const value = isObject(v.value) ? v.value : {};
 			return (
 				liabilities.has(v.holdingId) &&
-				String(value.amount ?? '')
+				printed(value.amount ?? '')
 					.trim()
 					.startsWith('-')
 			);
 		})
 		.map(
 			(v) =>
-				`negative liability value: valuation "${String(v.id)}" of holding "${String(v.holdingId)}"`
+				`negative liability value: valuation "${printed(v.id)}" of holding "${printed(v.holdingId)}"`
 		);
 }
 
@@ -255,6 +260,13 @@ function cyclesOf(parentOf: Map<string, string>): Map<string, string[]> {
 	return cycleOf;
 }
 
+/** Group in place: copying the group on every row is quadratic on a large import. */
+function appendTo<T>(groups: Map<string, T[]>, key: string, item: T): void {
+	const group = groups.get(key);
+	if (group) group.push(item);
+	else groups.set(key, [item]);
+}
+
 /** Two ownership rows of one subject on one holding whose intervals overlap
  *  (specification section 5.7). A calendar date compares as text: YYYY-MM-DD
  *  sorts as it dates. An absent `from` is since always, an absent `until` is
@@ -264,7 +276,7 @@ function ownershipOverlaps(doc: AssetNotationDocument): string[] {
 	for (const o of list(doc, 'ownership')) {
 		if (typeof o.subjectId !== 'string' || typeof o.holdingId !== 'string') continue;
 		const key = `${o.subjectId}\u0000${o.holdingId}`;
-		rows.set(key, [...(rows.get(key) ?? []), o]);
+		appendTo(rows, key, o);
 	}
 	const bound = (v: unknown): string => (typeof v === 'string' ? v : '');
 	const errors: string[] = [];
@@ -275,7 +287,7 @@ function ownershipOverlaps(doc: AssetNotationDocument): string[] {
 			const current = sorted[i];
 			if (previous.until === undefined || bound(current.from) < bound(previous.until)) {
 				errors.push(
-					`ownership of holding "${String(current.holdingId)}" by "${String(current.subjectId)}" overlaps: [${bound(previous.from)}, ${bound(previous.until)}) and [${bound(current.from)}, ${bound(current.until)})`
+					`ownership of holding "${printed(current.holdingId)}" by "${printed(current.subjectId)}" overlaps: [${bound(previous.from)}, ${bound(previous.until)}) and [${bound(current.from)}, ${bound(current.until)})`
 				);
 			}
 		}
@@ -288,7 +300,8 @@ const DECIMAL = /^\d+(\.\d+)?$/;
 /** The exact sum of decimal strings, scaled to integers on the longest
  *  fraction: no float ever rounds an ownership share. */
 function sumOfDecimals(values: string[]): { total: bigint; scale: number } {
-	const scale = Math.max(0, ...values.map((v) => v.split('.')[1]?.length ?? 0));
+	let scale = 0;
+	for (const v of values) scale = Math.max(scale, v.split('.')[1]?.length ?? 0);
 	const total = values.reduce((acc, v) => {
 		const [whole, fraction = ''] = v.split('.');
 		return acc + BigInt(whole + fraction.padEnd(scale, '0'));
@@ -305,7 +318,7 @@ function overSharedHoldings(doc: AssetNotationDocument): string[] {
 		if (typeof o.holdingId !== 'string' || typeof o.share !== 'string' || !DECIMAL.test(o.share)) {
 			continue; // shape is the schema's job
 		}
-		rowsOf.set(o.holdingId, [...(rowsOf.get(o.holdingId) ?? []), o]);
+		appendTo(rowsOf, o.holdingId, o);
 	}
 	const notes: string[] = [];
 	for (const [holdingId, rows] of rowsOf) {
@@ -320,24 +333,37 @@ function overSharedHoldings(doc: AssetNotationDocument): string[] {
 
 /** The shares held at the same time that weigh the most. Two owners in
  *  succession never hold together, so only rows alive at one instant add up;
- *  that instant is always the start of one of them. */
+ *  that instant is always the start of one of them. One sweep over the starts
+ *  and ends in date order: an imported document of many rows stays linear. */
 function heaviestConcurrentShares(rows: Record<string, unknown>[]): string[] {
 	const bound = (v: unknown): string => (typeof v === 'string' ? v : '');
 	const alive = (row: Record<string, unknown>, at: string): boolean =>
 		bound(row.from) <= at && (row.until === undefined || at < bound(row.until));
-	let heaviest: string[] = [];
-	let most = { total: -1n, scale: 0 };
-	for (const start of rows) {
-		const shares = rows
-			.filter((row) => alive(row, bound(start.from)))
-			.map((row) => String(row.share));
-		const sum = sumOfDecimals(shares);
-		if (sum.total * 10n ** BigInt(most.scale) > most.total * 10n ** BigInt(sum.scale)) {
-			most = sum;
-			heaviest = shares;
+	// A row that ends where it starts, or before, is alive at no instant.
+	const live = rows.filter((row) => row.until === undefined || bound(row.from) < bound(row.until));
+	const { scale } = sumOfDecimals(live.map((row) => String(row.share)));
+	const scaled = (row: Record<string, unknown>): bigint =>
+		sumOfDecimals([String(row.share), `0.${'0'.repeat(scale)}`]).total;
+	// At one date, the rows ending there go before the ones starting there.
+	const events = live.flatMap((row) => {
+		const start = { at: bound(row.from), ends: 0, weight: scaled(row) };
+		return row.until === undefined
+			? [start]
+			: [start, { at: bound(row.until), ends: 1, weight: -start.weight }];
+	});
+	events.sort((a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : b.ends - a.ends));
+	let total = 0n;
+	let most: { total: bigint; at: string } | null = null;
+	for (const [i, event] of events.entries()) {
+		total += event.weight;
+		const lastOfItsDate = events[i + 1]?.at !== event.at;
+		if (lastOfItsDate && event.ends === 0 && (most === null || total > most.total)) {
+			most = { total, at: event.at };
 		}
 	}
-	return heaviest;
+	if (most === null) return [];
+	const at = most.at;
+	return live.filter((row) => alive(row, at)).map((row) => String(row.share));
 }
 
 /**
@@ -349,7 +375,7 @@ export function validate(doc: unknown): ValidationResult {
 		return { valid: false, schemaVersion: null, errors: ['not a JSON object'], notes: [] };
 	}
 	const document = doc as AssetNotationDocument;
-	const declared = String(document.assetnotation ?? '');
+	const declared = printed(document.assetnotation ?? '');
 	const majorMinor = declared.split('.').slice(0, 2).join('.');
 	const entry = load().get(majorMinor);
 	if (!entry) {

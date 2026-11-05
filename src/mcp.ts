@@ -58,6 +58,8 @@ export interface Tool {
 	inputSchema: z.ZodRawShape;
 	/** `true` when the tool changes nothing. */
 	readOnly: boolean;
+	/** `true` when it may replace what the document already holds, not only add to it. */
+	destructive?: boolean;
 	run(args: Record<string, unknown>): unknown;
 }
 
@@ -315,6 +317,7 @@ export function wealthTools(
 				'Create a holding (an account, a property, a loan...) or update the fields given on the one with that id; fields you do not pass are kept. Creates the file when it does not exist. Does not record a value: call add_valuation for that.',
 			inputSchema: holdingShape,
 			readOnly: false,
+			destructive: true,
 			run: (args) => {
 				const { doc, holding } = upsertHolding(
 					file.readOrEmpty(),
@@ -365,6 +368,7 @@ export function wealthTools(
 				'Merge a spreadsheet (CSV text, one row per holding with label, amount, asOf...) into the document. Rows match existing holdings by id or label and update them; the rest become new holdings. Each amount becomes a valuation. Comma or semicolon separated, decimals with a point or a comma. Creates the file when it does not exist.',
 			inputSchema: csvShape,
 			readOnly: false,
+			destructive: true,
 			run: (args) => {
 				const { csv, baseCurrency } = args as { csv: string; baseCurrency?: string };
 				let merged: ReturnType<typeof mergeCsv>;
@@ -379,6 +383,13 @@ export function wealthTools(
 		}
 	];
 }
+
+/** What a client is told about a tool before calling it, to decide on a confirmation. */
+export const annotationsOf = (tool: Tool) => ({
+	readOnlyHint: tool.readOnly,
+	destructiveHint: tool.destructive === true,
+	openWorldHint: false
+});
 
 export const DOCUMENT_URI = 'asset-notation://document';
 
@@ -401,7 +412,7 @@ export async function serve(path: string, pipes: Pipes = process): Promise<void>
 			{
 				description: tool.description,
 				inputSchema: tool.inputSchema,
-				annotations: { readOnlyHint: tool.readOnly, destructiveHint: false, openWorldHint: false }
+				annotations: annotationsOf(tool)
 			},
 			(args: Record<string, unknown>) => {
 				try {
