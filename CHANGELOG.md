@@ -15,6 +15,15 @@
   portfolio passed too many arguments and the sum threw `RangeError`.
 - `netWorth`, `listHoldings` and `toCsv` read the latest valuation of every
   holding in one pass over the valuations, instead of one pass per holding.
+- `validate` adds up concurrent ownership shares in one sweep over the dates,
+  and groups the rows in place: twenty thousand rows on one holding took over a
+  minute and now take a fraction of a second.
+- `validate` refuses a version or an id whose `toString` was replaced instead
+  of throwing.
+- The MCP server declares `upsert_holding` and `import_csv` destructive, since
+  both may replace what the document already holds.
+- The registry workflow installs a pinned `mcp-publisher` and checks its
+  sha256 before running it with the publishing credentials.
 
 ## [0.1.10] - 2026-11-03
 
