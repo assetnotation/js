@@ -295,7 +295,7 @@ export interface FromCsvOptions extends CsvOptions {
 }
 
 /**
- * Read a spreadsheet into a document. Rows missing a label AND an amount are
+ * Read a spreadsheet into a document. Rows whose every cell is empty are
  * skipped, which is what the blank lines at the bottom of every real export
  * are; anything else is kept, because deciding a row is meaningless is the
  * user's call and not this function's.
@@ -362,7 +362,9 @@ export function readCsv(
 			delimiter,
 			options.baseCurrency
 		);
-		if (label === '' && amount === '') continue;
+		// A holding with an id but no label nor valuation is one `toCsv` wrote:
+		// only a row with nothing in any cell is padding.
+		if (row.every((cell) => cell.trim() === '')) continue;
 		const nature = natureOf(at(row, 'nature'));
 
 		const id = at(row, 'id') || `h${holdings.length + 1}`;
