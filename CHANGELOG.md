@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.1.12] - 2026-11-07
+
 ### Fixed
 
 - `fromCsv` keeps a row that carries an id, a kind or an institution but
