@@ -184,6 +184,19 @@ describe('reading a spreadsheet as people actually save it', () => {
 		expect(doc.holdings).toHaveLength(1);
 	});
 
+	it('keeps an identified holding with neither a label nor a valuation across a round trip', () => {
+		const source = fromCsv('id;label;kind;institution;amount\nacc-7;;checking;Banque;\n', {
+			generatedAt: STAMP
+		});
+		const back = fromCsv(toCsv(source), { generatedAt: STAMP });
+		const holdings = back.holdings as Record<string, unknown>[];
+		expect(holdings).toHaveLength(1);
+		expect(holdings[0].id).toBe('acc-7');
+		expect(holdings[0].label).toBeUndefined();
+		expect(back.valuations).toBeUndefined();
+		expect(back.institutions).toEqual([{ id: 'i1', name: 'Banque' }]);
+	});
+
 	it('produces a document this library itself accepts', () => {
 		// The bar that matters: converting must not hand back something the
 		// validator rejects, or the fault surfaces later and somewhere else.

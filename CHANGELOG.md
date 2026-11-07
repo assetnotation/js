@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- `fromCsv` keeps a row that carries an id, a kind or an institution but
+  neither a label nor an amount, so a holding `toCsv` exported comes back on
+  import. Only a row whose every cell is empty is skipped.
+
 ## [0.1.11] - 2026-11-05
 
 ### Fixed
