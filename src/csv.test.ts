@@ -350,6 +350,29 @@ describe('writing a spreadsheet', () => {
 		);
 	});
 
+	it('takes the latest valuation past the millisecond, listed in reverse', () => {
+		const doc = {
+			assetnotation: '0.3.0',
+			generatedAt: STAMP,
+			holdings: [{ id: 'h1', kind: 'checking', nature: 'asset', label: 'Compte', currency: 'EUR' }],
+			valuations: [
+				{
+					id: 'v1',
+					holdingId: 'h1',
+					asOf: '2026-06-24T12:00:00.0009Z',
+					value: { amount: '2.00', currency: 'EUR' }
+				},
+				{
+					id: 'v2',
+					holdingId: 'h1',
+					asOf: '2026-06-24T12:00:00.0001Z',
+					value: { amount: '1.00', currency: 'EUR' }
+				}
+			]
+		};
+		expect(toCsv(doc).trim().split('\n')[1]).toContain('2.00');
+	});
+
 	it('takes the latest valuation by instant, offsets included', () => {
 		const doc = {
 			assetnotation: '0.3.0',
@@ -383,6 +406,14 @@ describe('writing a spreadsheet', () => {
 		expect(() => fromCsv('label;amount;amount\nSavings;12;13\n', { generatedAt: STAMP })).toThrow(
 			/names the column "amount" twice/
 		);
+	});
+
+	it('refuses a header that names the date column twice, whatever its case', () => {
+		expect(() =>
+			fromCsv('label;amount;asOf;asOf\nSavings;12;2026-01-01;2026-02-01\n', {
+				generatedAt: STAMP
+			})
+		).toThrow(/names the column "asof" twice/);
 	});
 
 	it('refuses a header with neither a label nor an amount column', () => {

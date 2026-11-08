@@ -334,7 +334,10 @@ export function readCsv(
 		throw new Error('asset-notation: the CSV has neither a label nor an amount column');
 	}
 	// Two columns of one name: only the first was read, the second dropped unseen.
-	const twice = COLUMNS.find((c) => header.indexOf(c) !== header.lastIndexOf(c));
+	// The header is read in lower case, so `asOf` is looked for as `asof`.
+	const twice = COLUMNS.map((c) => c.toLowerCase()).find(
+		(c) => header.indexOf(c) !== header.lastIndexOf(c)
+	);
 	if (twice) throw new Error(`asset-notation: the CSV header names the column "${twice}" twice`);
 	const at = (row: string[], name: string): string => {
 		const i = header.indexOf(name);

@@ -28,6 +28,21 @@ export function instantOf(asOf: unknown): number {
 	return Number.isNaN(t) ? -Infinity : t;
 }
 
+/** The digits of a timestamp's fraction past the millisecond, as a number of
+ *  nanoseconds: `Date.parse` drops them, and two valuations a few microseconds
+ *  apart then tie and the one listed last wins whatever its age. */
+function beyondMillisecond(asOf: unknown): number {
+	const fraction = typeof asOf === 'string' ? /T[\d:]+\.(\d+)/.exec(asOf)?.[1] : undefined;
+	return fraction ? Number(fraction.slice(3, 9).padEnd(6, '0')) : 0;
+}
+
+/** Whether `a` names an instant at or after `b`, with every digit the format allows. */
+function atOrAfter(a: unknown, b: unknown): boolean {
+	const ms = instantOf(a) - instantOf(b);
+	if (ms !== 0 && !Number.isNaN(ms)) return ms > 0;
+	return beyondMillisecond(a) >= beyondMillisecond(b);
+}
+
 /**
  * The latest valuation of every holding, in one pass over the valuations: a
  * lookup per holding filtered the whole list each time, 180 million entries
@@ -38,7 +53,7 @@ export function latestValuations(doc: AssetNotationDocument): Map<unknown, Entit
 	const latest = new Map<unknown, Entity>();
 	for (const v of entities(doc, 'valuations')) {
 		const held = latest.get(v.holdingId);
-		if (!held || instantOf(v.asOf) >= instantOf(held.asOf)) latest.set(v.holdingId, v);
+		if (!held || atOrAfter(v.asOf, held.asOf)) latest.set(v.holdingId, v);
 	}
 	return latest;
 }
