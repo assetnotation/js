@@ -167,11 +167,24 @@ function amountOf(raw: string, delimiter: string): string {
 	const lastComma = cleaned.lastIndexOf(',');
 	const lastDot = cleaned.lastIndexOf('.');
 	if (lastComma !== -1 && lastDot !== -1) {
-		return lastComma > lastDot
-			? cleaned.replaceAll('.', '').replace(',', '.')
-			: cleaned.replaceAll(',', '');
+		const [group, decimal] = lastComma > lastDot ? ['.', ','] : [',', '.'];
+		const [whole, fraction] = splitAt(cleaned, cleaned.lastIndexOf(decimal));
+		// "1,23.45" is a typo, not 123.45: a misplaced group is kept as written,
+		// for `validate` to refuse.
+		if (!groupedByThousands(whole, group)) return cleaned;
+		return `${whole.replaceAll(group, '')}.${fraction}`;
 	}
 	return cleaned;
+}
+
+function splitAt(text: string, index: number): [string, string] {
+	return [text.slice(0, index), text.slice(index + 1)];
+}
+
+/** True when every group after the first holds exactly three digits. */
+function groupedByThousands(whole: string, group: string): boolean {
+	const [head, ...rest] = whole.replace(/^[-+]/, '').split(group);
+	return /^\d{1,3}$/.test(head) && rest.every((part) => /^\d{3}$/.test(part));
 }
 
 /** The currency signs a spreadsheet's currency format prints, and the one each

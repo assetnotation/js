@@ -67,6 +67,16 @@ describe('reading a spreadsheet as people actually save it', () => {
 		).toEqual(['1234567.89', '2345678.90']);
 	});
 
+	it('keeps a misplaced thousands mark as written, for validate to refuse', () => {
+		const typo = fromCsv('label;amount\nReserve;1,23.45\nB;"1.2345,67"\n', { generatedAt: STAMP });
+		expect(
+			(typo.valuations as Record<string, unknown>[]).map(
+				(v) => (v.value as Record<string, unknown>).amount
+			)
+		).toEqual(['1,23.45', '1.2345,67']);
+		expect(validate(typo).valid).toBe(false);
+	});
+
 	it('reads an amount saved in a currency format, sign and all', () => {
 		// "12 345,67 EUR-sign" is what a cell formatted as currency exports. The
 		// sign used to stay glued to the number and the document was invalid.
