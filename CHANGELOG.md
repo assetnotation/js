@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.1.13] - 2026-11-08
+
 ### Fixed
 
 - `fromCsv` refuses a header that names `asOf` twice, as it already did for the
