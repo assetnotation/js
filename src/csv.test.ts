@@ -350,50 +350,29 @@ describe('writing a spreadsheet', () => {
 		);
 	});
 
-	it('takes the latest valuation past the millisecond, listed in reverse', () => {
+	/** The CSV line of one holding valued twice: first `newer` at 2.00, then `older` at 1.00. */
+	const latestLine = (newer: string, older: string): string => {
+		const valuation = (id: string, asOf: string, amount: string) => ({
+			id,
+			holdingId: 'h1',
+			asOf,
+			value: { amount, currency: 'EUR' }
+		});
 		const doc = {
 			assetnotation: '0.3.0',
 			generatedAt: STAMP,
 			holdings: [{ id: 'h1', kind: 'checking', nature: 'asset', label: 'Compte', currency: 'EUR' }],
-			valuations: [
-				{
-					id: 'v1',
-					holdingId: 'h1',
-					asOf: '2026-06-24T12:00:00.0009Z',
-					value: { amount: '2.00', currency: 'EUR' }
-				},
-				{
-					id: 'v2',
-					holdingId: 'h1',
-					asOf: '2026-06-24T12:00:00.0001Z',
-					value: { amount: '1.00', currency: 'EUR' }
-				}
-			]
+			valuations: [valuation('v1', newer, '2.00'), valuation('v2', older, '1.00')]
 		};
-		expect(toCsv(doc).trim().split('\n')[1]).toContain('2.00');
+		return toCsv(doc).trim().split('\n')[1];
+	};
+
+	it('takes the latest valuation past the millisecond, listed in reverse', () => {
+		expect(latestLine('2026-06-24T12:00:00.0009Z', '2026-06-24T12:00:00.0001Z')).toContain('2.00');
 	});
 
 	it('takes the latest valuation by instant, offsets included', () => {
-		const doc = {
-			assetnotation: '0.3.0',
-			generatedAt: STAMP,
-			holdings: [{ id: 'h1', kind: 'checking', nature: 'asset', label: 'Compte', currency: 'EUR' }],
-			valuations: [
-				{
-					id: 'v1',
-					holdingId: 'h1',
-					asOf: '2026-06-23T23:30:00Z',
-					value: { amount: '2.00', currency: 'EUR' }
-				},
-				{
-					id: 'v2',
-					holdingId: 'h1',
-					asOf: '2026-06-24T01:00:00+02:00',
-					value: { amount: '1.00', currency: 'EUR' }
-				}
-			]
-		};
-		expect(toCsv(doc).trim().split('\n')[1]).toContain('2.00');
+		expect(latestLine('2026-06-23T23:30:00Z', '2026-06-24T01:00:00+02:00')).toContain('2.00');
 	});
 
 	it('refuses a row wider than its header instead of dropping the cents', () => {
