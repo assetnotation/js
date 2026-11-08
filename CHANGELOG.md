@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- `fromCsv` refuses a header that names `asOf` twice, as it already did for the
+  other columns: the header is read in lower case and the check looked for
+  `asOf`, so the second date column was dropped unseen.
+- The latest valuation of a holding compares timestamps past the millisecond:
+  two valuations a few microseconds apart no longer tie, so the older one
+  listed last no longer replaces the newer one.
+
 ## [0.1.12] - 2026-11-07
 
 ### Fixed
