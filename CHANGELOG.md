@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- `fromCsv` no longer drops a misplaced thousands mark: `1,23.45` used to read
+  as `123.45` and pass validation. An amount whose groups are not three digits
+  is kept as written, so `validate` refuses it.
+
 ## [0.1.13] - 2026-11-08
 
 ### Fixed
