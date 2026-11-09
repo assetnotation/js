@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.1.14] - 2026-11-09
+
 ### Fixed
 
 - `fromCsv` no longer drops a misplaced thousands mark: `1,23.45` used to read
