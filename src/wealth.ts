@@ -189,8 +189,12 @@ export function netWorth(doc: AssetNotationDocument): NetWorth {
 	const unvaluedHoldingIds: string[] = [];
 	let oldest: Entity | undefined;
 	let valuedHoldings = 0;
+	/* A container is counted through its leaves, never twice (spec section 6):
+	 * an account worth 100 000 holding positions worth 100 000 is 100 000. */
+	const containers = new Set(entities(doc, 'holdings').map((h) => h.parentId));
 
 	for (const h of entities(doc, 'holdings')) {
+		if (containers.has(h.id)) continue;
 		const v = latest.get(h.id);
 		const value = v?.value;
 		const amount =

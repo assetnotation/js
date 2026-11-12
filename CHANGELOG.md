@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- `netWorth` counts a container through its leaves, as section 6 of the
+  specification derives it: an account valued at 100 000 that holds positions
+  worth 100 000 used to count 200 000.
+
 ## [0.1.14] - 2026-11-09
 
 ### Fixed
