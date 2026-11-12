@@ -288,6 +288,52 @@ describe('reading a spreadsheet as people actually save it', () => {
 		expect(net.byCurrency[0].net).toBe(String(179 * 1000));
 	});
 
+	it('counts a container through its leaves, never twice', () => {
+		const doc = {
+			assetnotation: '0.5.0',
+			generatedAt: STAMP,
+			baseCurrency: 'EUR',
+			holdings: [
+				{ id: 'compte', label: 'Compte titres', nature: 'asset' },
+				{ id: 'a', label: 'Action A', nature: 'asset', parentId: 'compte' },
+				{ id: 'b', label: 'Action B', nature: 'asset', parentId: 'compte' },
+				{ id: 'livret', label: 'Livret', nature: 'asset' }
+			],
+			valuations: [
+				{
+					id: 'v1',
+					holdingId: 'compte',
+					asOf: '2026-11-01',
+					value: { amount: '100000', currency: 'EUR' }
+				},
+				{
+					id: 'v2',
+					holdingId: 'a',
+					asOf: '2026-11-01',
+					value: { amount: '60000', currency: 'EUR' }
+				},
+				{
+					id: 'v3',
+					holdingId: 'b',
+					asOf: '2026-11-01',
+					value: { amount: '40000', currency: 'EUR' }
+				},
+				{
+					id: 'v4',
+					holdingId: 'livret',
+					asOf: '2026-11-01',
+					value: { amount: '5000', currency: 'EUR' }
+				}
+			]
+		};
+		expect(netWorth(doc).byCurrency[0].net).toBe('105000');
+		// A child with no valuation contributes zero; the container is still not counted.
+		doc.valuations = doc.valuations.filter((v) => v.id !== 'v3');
+		const partiel = netWorth(doc);
+		expect(partiel.byCurrency[0].net).toBe('65000');
+		expect(partiel.unvaluedHoldingIds).toEqual(['b']);
+	});
+
 	it('refuses an empty file rather than inventing an empty document', () => {
 		expect(() => fromCsv('   \n')).toThrow(/empty/);
 	});
