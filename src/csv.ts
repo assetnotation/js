@@ -245,11 +245,18 @@ function amountAndCurrency(
  * European spreadsheet, which writes the day first. Anything else is kept as
  * written, for `validate` to refuse.
  */
-function dateOf(raw: string, delimiter: string): string {
+function dateOf(raw: string, delimiter: string, order?: FromCsvOptions['dateOrder']): string {
 	const parts = /^(\d{1,2})[/.](\d{1,2})[/.](\d{4})$/.exec(raw);
 	if (!parts) return raw;
 	const [, first, second, year] = parts;
-	const dayFirst = Number(first) > 12 || (Number(second) <= 12 && delimiter !== ',');
+	if (order !== undefined) {
+		const month = order === 'day-first' ? second : first;
+		if (Number(month) > 12) return raw;
+	}
+	const dayFirst =
+		order === undefined
+			? Number(first) > 12 || (Number(second) <= 12 && delimiter !== ',')
+			: order === 'day-first';
 	const [day, month] = dayFirst ? [first, second] : [second, first];
 	return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
 }
@@ -305,6 +312,11 @@ export interface FromCsvOptions extends CsvOptions {
 	/** The version to declare. Defaults to the newest this build validates. */
 	version?: string;
 	baseCurrency?: string;
+	/** How a slashed date reads when both orders are possible. Without it the
+	 *  delimiter decides (a semicolon reads day first), which turns a French
+	 *  `03/06/2026` in a comma-separated file into the 6th of March. A date the
+	 *  given order cannot read is kept as written, for `validate` to refuse. */
+	dateOrder?: 'day-first' | 'month-first';
 }
 
 /**
@@ -418,7 +430,7 @@ export function readCsv(
 			const valuation: Record<string, unknown> = {
 				id: `v${valuations.length + 1}`,
 				holdingId: id,
-				asOf: dateOf(at(row, 'asof'), delimiter) || generatedAt.slice(0, 10),
+				asOf: dateOf(at(row, 'asof'), delimiter, options.dateOrder) || generatedAt.slice(0, 10),
 				value: { amount, currency }
 			};
 			const source = at(row, 'source');

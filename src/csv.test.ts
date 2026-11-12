@@ -112,6 +112,24 @@ describe('reading a spreadsheet as people actually save it', () => {
 		expect(validate(contradicted).valid).toBe(false);
 	});
 
+	it('reads a slashed date in the order the caller states, whatever the delimiter', () => {
+		// 2026-11-12 (Codex audit): a French date in a comma-separated file read month first.
+		const asOf = (doc: ReturnType<typeof fromCsv>) =>
+			(doc.valuations as Record<string, unknown>[]).map((v) => v.asOf);
+		const csv = 'label,amount,asOf\nA,1,03/06/2026\nB,2,24/06/2026\n';
+		expect(asOf(fromCsv(csv, { generatedAt: STAMP }))).toEqual(['2026-03-06', '2026-06-24']);
+		expect(asOf(fromCsv(csv, { generatedAt: STAMP, dateOrder: 'day-first' }))).toEqual([
+			'2026-06-03',
+			'2026-06-24'
+		]);
+		const monthFirst = fromCsv('label;amount;asOf\nA;1;03/06/2026\nB;2;24/06/2026\n', {
+			generatedAt: STAMP,
+			dateOrder: 'month-first'
+		});
+		expect(asOf(monthFirst)).toEqual(['2026-03-06', '24/06/2026']);
+		expect(validate(monthFirst).valid).toBe(false);
+	});
+
 	it('reads the dates a spreadsheet writes, day first where the columns say so', () => {
 		// A French or German sheet dates a row "24/06/2026" or "24.06.2026", and
 		// the row used to reach the document as written, where the schema
