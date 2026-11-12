@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+### Added
+
+- `fromCsv` takes a `dateOrder` option, `day-first` or `month-first`, for a
+  slashed date both orders could read. Without it the delimiter still decides,
+  and a French `03/06/2026` in a comma-separated file read as the 6th of March.
+
 ## [0.1.15] - 2026-11-12
 
 ### Fixed

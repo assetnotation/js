@@ -132,7 +132,7 @@ validate(doc: unknown): {
 supportedVersions(): string[]
 
 toCsv(doc, { delimiter? }): string
-fromCsv(text, { delimiter?, generatedAt?, version?, baseCurrency? }): Document
+fromCsv(text, { delimiter?, generatedAt?, version?, baseCurrency?, dateOrder? }): Document
 
 netWorth(doc): {
   byCurrency: { currency, assets, liabilities, net }[];  // decimal strings
@@ -144,7 +144,9 @@ netWorth(doc): {
 
 `fromCsv` takes `generatedAt` rather than reading the clock, so the same input
 always produces the same bytes - which is what lets a converted file be diffed
-or committed.
+or committed. A slashed date both orders could read follows `dateOrder`
+(`day-first` or `month-first`) when given, and the delimiter otherwise: a
+semicolon reads the day first.
 
 ## Exit codes
 
