@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.1.15] - 2026-11-12
+
 ### Fixed
 
 - `netWorth` counts a container through its leaves, as section 6 of the
