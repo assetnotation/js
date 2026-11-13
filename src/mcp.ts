@@ -23,6 +23,7 @@ import {
 	readFileSync,
 	renameSync,
 	rmSync,
+	realpathSync,
 	statSync,
 	unlinkSync,
 	writeFileSync
@@ -211,16 +212,20 @@ class WealthFile {
 				'the change would make the document invalid; nothing was written',
 				result.errors
 			);
-		mkdirSync(dirname(this.path), { recursive: true });
+		// A document reached through a link is written at its TARGET: renaming over
+		// the link replaced the link itself, and the file it pointed to kept the
+		// old figures while the tool reported a success.
+		const target = this.exists() ? realpathSync(this.path) : this.path;
+		mkdirSync(dirname(target), { recursive: true });
 		// Written beside, then renamed over: an interrupted write or a full disk
 		// leaves the previous file whole instead of a truncated one.
 		// A random name created exclusively: a predictable one could be a link
 		// planted by another user, and writing through it would truncate its target.
-		const temporary = `${this.path}.${randomBytes(8).toString('hex')}.tmp`;
+		const temporary = `${target}.${randomBytes(8).toString('hex')}.tmp`;
 		const text = `${JSON.stringify(final, null, 2)}\n`;
 		// A net worth is private: the temporary is born owner-only, and the file
 		// it replaces keeps the permissions it had rather than the umask's.
-		const mode = this.exists() ? statSync(this.path).mode & 0o777 : 0o600;
+		const mode = this.exists() ? statSync(target).mode & 0o777 : 0o600;
 		try {
 			writeFileSync(temporary, text, { flush: true, mode: 0o600, flag: 'wx' });
 		} catch (error) {
@@ -239,14 +244,14 @@ class WealthFile {
 					`${this.path} changed since it was read, by another writer; nothing was written, run the tool again`
 				);
 			}
-			renameSync(temporary, this.path);
+			renameSync(temporary, target);
 		} catch (error) {
 			unlinkSync(temporary);
 			throw error;
 		}
 		this.seen = text;
 		try {
-			this.sync(dirname(this.path));
+			this.sync(dirname(target));
 		} catch (error) {
 			// The change is in the file: a refusal that said nothing was written would
 			// have the caller run it again, and a holding created twice.

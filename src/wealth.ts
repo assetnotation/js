@@ -311,8 +311,9 @@ export function mergeCsv(
 	for (const [index, h] of entities(imported, 'holdings').entries()) {
 		const { institutionId: importedInstitution, ...fields } = h;
 		const institution = institutionNames.get(importedInstitution);
-		// fromCsv mints `h<row>` for a row whose id cell is empty.
-		const idGiven = columns.has('id') && h.id !== `h${String(index + 1)}`;
+		// fromCsv mints `h<row>` for a row whose id cell is empty: only a cell the
+		// sheet filled names a holding, a real `h1` in the first row included.
+		const idGiven = !blank[index].has('id');
 		const id = targetHoldingId(next, h, institution, idGiven);
 		// On a holding that exists, a column the sheet does not have, or a cell it
 		// left empty, says nothing: the converter's defaults (an `other` asset in
@@ -321,6 +322,9 @@ export function mergeCsv(
 			for (const field of DEFAULTED_FIELDS) {
 				if (!columns.has(field) || blank[index].has(field)) delete fields[field];
 			}
+			// An empty currency cell reads as the unstated base, not as a blank
+			// default: without this it took the fallback and turned USD into EUR.
+			if (fields.currency === UNSTATED && !stated(probedHoldings[index])) delete fields.currency;
 		}
 		if (fields.currency === UNSTATED && !stated(probedHoldings[index])) fields.currency = fallback;
 		const input: HoldingInput = { ...(fields as HoldingInput), id, institution };
@@ -386,7 +390,9 @@ function targetHoldingId(
 		const name = names.get(h.institutionId);
 		return institution === undefined || name === undefined || name === institution;
 	};
-	const sameId = holdings.find((h) => h.id === imported.id);
+	// A minted id identifies nothing: matched on it, a row with no label put its
+	// amount on whatever holding happened to be `h1`.
+	const sameId = idGiven ? holdings.find((h) => h.id === imported.id) : undefined;
 	if (
 		sameId &&
 		(imported.label === undefined || sameId.label === imported.label) &&
@@ -408,5 +414,6 @@ function targetHoldingId(
 			`asset-notation: ${sameLabel.length} holdings are labelled "${String(imported.label)}"; give the row an id or an institution`
 		);
 	if (sameLabel.length === 1) return String(sameLabel[0].id);
-	return sameId ? nextId(doc, 'holdings', 'h') : String(imported.id);
+	const taken = holdings.some((h) => h.id === imported.id);
+	return taken ? nextId(doc, 'holdings', 'h') : String(imported.id);
 }
