@@ -8,6 +8,13 @@
   slashed date both orders could read. Without it the delimiter still decides,
   and a French `03/06/2026` in a comma-separated file read as the 6th of March.
 
+### Fixed
+
+- `upsertHolding` (and the `upsert_holding` tool) changes `attributes` key by
+  key, as its contract already said of every field: sending `{ rate: "4" }` to
+  a loan holding `{ rate: "3", endDate: "2040-01-01" }` used to drop the end
+  date. A key set to `null` is removed; `attributes: null` removes them all.
+
 ## [0.1.15] - 2026-11-12
 
 ### Fixed

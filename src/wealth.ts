@@ -80,7 +80,10 @@ export interface HoldingInput {
 	/** `null` removes the link to the instrument. */
 	instrumentId?: string | null;
 	quantity?: string;
-	attributes?: Record<string, unknown>;
+	/** Merged key by key into the attributes held: a key given `null` is
+	 *  removed, a key not given is kept. `null` for the whole field removes
+	 *  every attribute. */
+	attributes?: Record<string, unknown> | null;
 	openedAt?: string;
 	closedAt?: string;
 }
@@ -95,6 +98,29 @@ function institutionId(
 	if (existing) return { doc, id: String(existing.id) };
 	const id = nextId(doc, 'institutions', 'i');
 	return { doc: { ...doc, institutions: [...entities(doc, 'institutions'), { id, name }] }, id };
+}
+
+/** Attributes change key by key: `{ rate: "4" }` keeps an `endDate` already held. */
+function mergeAttributes(
+	holding: Entity,
+	attributes: Record<string, unknown> | null | undefined
+): void {
+	if (attributes === undefined) return;
+	if (attributes === null) {
+		delete holding.attributes;
+		return;
+	}
+	const held = holding.attributes;
+	const merged: Record<string, unknown> =
+		held !== null && typeof held === 'object' && !Array.isArray(held)
+			? { ...(held as Record<string, unknown>) }
+			: {};
+	for (const [key, value] of Object.entries(attributes)) {
+		if (value === null) delete merged[key];
+		else if (value !== undefined) merged[key] = value;
+	}
+	if (Object.keys(merged).length === 0) delete holding.attributes;
+	else holding.attributes = merged;
 }
 
 /**
@@ -116,11 +142,13 @@ export function upsertHolding(
 			? { id: input.id ?? nextId(doc, 'holdings', 'h'), kind: 'other', nature: 'asset' }
 			: holdings[index];
 
+	const { attributes, ...plain } = fields;
 	const holding: Entity = { ...base };
-	for (const [key, value] of Object.entries(fields)) {
+	for (const [key, value] of Object.entries(plain)) {
 		if (value === null) delete holding[key];
 		else if (value !== undefined) holding[key] = value;
 	}
+	mergeAttributes(holding, attributes);
 	if (institution === null) delete holding.institutionId;
 	else if (institution !== undefined) {
 		const found = institutionId(next, institution);
