@@ -321,6 +321,9 @@ export function mergeCsv(
 			for (const field of DEFAULTED_FIELDS) {
 				if (!columns.has(field) || blank[index].has(field)) delete fields[field];
 			}
+			// An empty currency cell reads as the unstated base, not as a blank
+			// default: without this it took the fallback and turned USD into EUR.
+			if (fields.currency === UNSTATED && !stated(probedHoldings[index])) delete fields.currency;
 		}
 		if (fields.currency === UNSTATED && !stated(probedHoldings[index])) fields.currency = fallback;
 		const input: HoldingInput = { ...(fields as HoldingInput), id, institution };

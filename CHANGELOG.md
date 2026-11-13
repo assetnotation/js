@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- `mergeCsv` keeps the currency of an existing holding when its `currency`
+  cell is empty. The empty cell took the fallback currency, so a USD account
+  became EUR and its new valuation with it, with no conversion and no error.
+- The MCP server writes a document reached through a symbolic link at the
+  link's target. It renamed over the link itself, so the target kept the old
+  figures while the tool reported a success.
+
 ## [0.1.16] - 2026-11-13
 
 ### Added

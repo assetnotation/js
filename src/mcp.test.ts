@@ -14,7 +14,8 @@ import {
 	statSync,
 	symlinkSync,
 	writeFileSync,
-	existsSync
+	existsSync,
+	lstatSync
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -112,6 +113,19 @@ describe('the MCP tools', () => {
 				(f) => f.startsWith(`wealth-${n}.json.`) && f !== `wealth-${n}.json.${process.pid}.tmp`
 			)
 		).toEqual([]);
+	});
+
+	it('writes a document reached through a link at its target, and keeps the link', () => {
+		const target = join(dir, `target-${n}.json`);
+		call('upsert_holding', { label: 'Current account', kind: 'checking', currency: 'EUR' });
+		writeFileSync(target, readFileSync(path, 'utf8'));
+		const linked = join(dir, `linked-${n}.json`);
+		symlinkSync(target, linked);
+		const through = Object.fromEntries(wealthTools(linked, () => NOW).map((t) => [t.name, t]));
+		through.upsert_holding.run({ label: 'Savings', kind: 'savings', currency: 'EUR' });
+		const held = JSON.parse(readFileSync(target, 'utf8')) as { holdings: unknown[] };
+		expect(held.holdings).toHaveLength(2);
+		expect(lstatSync(linked).isSymbolicLink()).toBe(true);
 	});
 
 	it('upsert_holding creates a minimal valid document of the newest version', () => {

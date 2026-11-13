@@ -576,4 +576,21 @@ describe('what an audit found the reader getting wrong', () => {
 		});
 		expect((doc.holdings as Record<string, unknown>[])[0].currency).toBe('EUR');
 	});
+
+	it('keeps the currency of an existing holding when its currency cell is empty', () => {
+		const start = fromCsv('id;label;amount;currency\nh1;Brokerage;1000;USD\n', {
+			generatedAt: STAMP,
+			baseCurrency: 'EUR'
+		});
+		const { doc } = mergeCsv(start, 'id;label;amount;currency\nh1;Brokerage;900;\n', {
+			generatedAt: STAMP,
+			baseCurrency: 'EUR'
+		});
+		const holding = (doc.holdings as Record<string, unknown>[])[0];
+		const values = (doc.valuations as Record<string, unknown>[]).map(
+			(v) => (v.value as Record<string, unknown>).currency
+		);
+		expect(holding.currency).toBe('USD');
+		expect(values).toEqual(['USD', 'USD']);
+	});
 });
