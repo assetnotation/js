@@ -4,6 +4,10 @@
 
 ### Fixed
 
+- `netWorth` adds each amount to its currency in place. It copied the whole
+  list for every holding, so a portfolio of 20 000 accounts in one currency
+  spent about three seconds in that loop alone.
+
 - `mergeCsv` keeps two rows the sheet gave two ids apart, under the same
   label. The second was matched to the first by its label, and its amount
   became the history of one account: 100 and 200 read as a total of 200.
