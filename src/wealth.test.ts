@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { upsertHolding } from './wealth.js';
+import { mergeCsv, upsertHolding } from './wealth.js';
 
 type AssetNotationDocument = Parameters<typeof upsertHolding>[0];
 
@@ -43,5 +43,30 @@ describe('upsertHolding keeps what it was not told to change', () => {
 			attributes: { rate: '2.4', ceiling: null }
 		});
 		expect(holding.attributes).toEqual({ rate: '2.4' });
+	});
+});
+
+describe('ids already in use', () => {
+	it('never mints an id a valuation already points at', () => {
+		const partial = {
+			valuations: [
+				{ id: 'v1', holdingId: 'h1', asOf: '2026-01-01', value: { amount: '500', currency: 'EUR' } }
+			]
+		} as unknown as AssetNotationDocument;
+		const { holding } = upsertHolding(partial, { label: 'Livret' });
+		expect(holding.id).not.toBe('h1');
+	});
+
+	it('keeps two holdings the sheet named apart, under the same label', () => {
+		const { doc } = mergeCsv({}, 'id;label;amount\ncompte-a;Réserve;100\ncompte-b;Réserve;200\n', {
+			baseCurrency: 'EUR'
+		});
+		const holdings = (doc.holdings ?? []) as { id: string }[];
+		expect(holdings.map((h) => h.id).sort()).toEqual(['compte-a', 'compte-b']);
+		const valuations = (doc.valuations ?? []) as { holdingId: string; value: { amount: string } }[];
+		expect(valuations.map((v) => [v.holdingId, v.value.amount])).toEqual([
+			['compte-a', '100'],
+			['compte-b', '200']
+		]);
 	});
 });

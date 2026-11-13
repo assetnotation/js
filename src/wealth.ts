@@ -54,6 +54,10 @@ export function normalize(doc: AssetNotationDocument, generatedAt: string): Asse
  *  document because `n` starts past the highest number present. */
 export function nextId(doc: AssetNotationDocument, collection: string, prefix: string): string {
 	const taken = new Set(entities(doc, collection).map((e) => String(e.id)));
+	// An id another entity already points at is taken too: minted again, a
+	// partial document's dangling `holdingId: "h1"` would hand its valuations
+	// to the new holding.
+	for (const id of referencedIds(doc)) taken.add(id);
 	// BigInt, because an imported id past 2^53 would stop a Number from moving.
 	let highest = 0n;
 	for (const id of taken) {
@@ -63,6 +67,19 @@ export function nextId(doc: AssetNotationDocument, collection: string, prefix: s
 	let next = highest + 1n;
 	while (taken.has(`${prefix}${next}`)) next += 1n;
 	return `${prefix}${next}`;
+}
+
+/** Every id the document points at: the values of the fields named `...Id`. */
+function referencedIds(doc: AssetNotationDocument): Set<string> {
+	const ids = new Set<string>();
+	for (const name of Object.keys(doc)) {
+		for (const entity of entities(doc, name)) {
+			for (const [key, value] of Object.entries(entity)) {
+				if (key.endsWith('Id') && typeof value === 'string') ids.add(value);
+			}
+		}
+	}
+	return ids;
 }
 
 export interface HoldingInput {
@@ -306,6 +323,9 @@ export function mergeCsv(
 		entities(imported, 'institutions').map((i) => [i.id, String(i.name)])
 	);
 	const holdingIds = new Map<string, string>();
+	// Holdings this sheet named by an id of its own: another id it wrote is
+	// another holding, whatever the label they share.
+	const named = new Set<string>();
 	let next = doc;
 
 	for (const [index, h] of entities(imported, 'holdings').entries()) {
@@ -314,7 +334,7 @@ export function mergeCsv(
 		// fromCsv mints `h<row>` for a row whose id cell is empty: only a cell the
 		// sheet filled names a holding, a real `h1` in the first row included.
 		const idGiven = !blank[index].has('id');
-		const id = targetHoldingId(next, h, institution, idGiven);
+		const id = targetHoldingId(next, h, institution, idGiven ? named : undefined);
 		// On a holding that exists, a column the sheet does not have, or a cell it
 		// left empty, says nothing: the converter's defaults (an `other` asset in
 		// EUR) must not turn a debt into an asset.
@@ -331,6 +351,7 @@ export function mergeCsv(
 		const result = upsertHolding(next, input);
 		next = result.doc;
 		holdingIds.set(String(h.id), String(result.holding.id));
+		if (idGiven) named.add(String(result.holding.id));
 	}
 
 	let valuations = 0;
@@ -380,8 +401,10 @@ function targetHoldingId(
 	doc: AssetNotationDocument,
 	imported: Entity,
 	institution: string | undefined,
-	idGiven: boolean
+	/** The ids this sheet already wrote, when this row writes one too. */
+	named: ReadonlySet<string> | undefined
 ): string {
+	const idGiven = named !== undefined;
 	const holdings = entities(doc, 'holdings');
 	const names = new Map(entities(doc, 'institutions').map((i) => [i.id, String(i.name)]));
 	// Two banks may each hold an account called "Epargne": a label matches only
@@ -408,7 +431,9 @@ function targetHoldingId(
 	const sameLabel =
 		imported.label === undefined
 			? []
-			: holdings.filter((h) => h.label === imported.label && sameInstitution(h));
+			: holdings.filter(
+					(h) => h.label === imported.label && sameInstitution(h) && !named?.has(String(h.id))
+				);
 	if (sameLabel.length > 1)
 		throw new Error(
 			`asset-notation: ${sameLabel.length} holdings are labelled "${String(imported.label)}"; give the row an id or an institution`
