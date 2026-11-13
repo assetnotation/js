@@ -111,8 +111,11 @@ const holdingShape = {
 	quantity: DECIMAL.optional().describe('Units held, as a decimal string.'),
 	attributes: z
 		.record(z.string(), z.unknown())
+		.nullable()
 		.optional()
-		.describe('Free key-values: rate, endDate, payment...'),
+		.describe(
+			'Free key-values: rate, endDate, payment... Merged key by key: a key set to null is removed, a key left out is kept. null removes them all.'
+		),
 	openedAt: z.string().optional(),
 	closedAt: z.string().optional()
 };
