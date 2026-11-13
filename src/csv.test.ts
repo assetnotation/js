@@ -593,4 +593,31 @@ describe('what an audit found the reader getting wrong', () => {
 		expect(holding.currency).toBe('USD');
 		expect(values).toEqual(['USD', 'USD']);
 	});
+
+	it('never puts a row naming no holding on the existing h1', () => {
+		const start = fromCsv('id;label;amount\nh1;Livret;100\n', {
+			generatedAt: STAMP,
+			baseCurrency: 'EUR'
+		});
+		const { doc } = mergeCsv(start, 'amount\n900\n', { generatedAt: STAMP, baseCurrency: 'EUR' });
+		const holdings = doc.holdings as Record<string, unknown>[];
+		const onLivret = (doc.valuations as Record<string, unknown>[]).filter(
+			(v) => v.holdingId === 'h1'
+		);
+		expect(holdings).toHaveLength(2);
+		expect(onLivret).toHaveLength(1);
+	});
+
+	it('reads a real h1 in the first row as an id the sheet wrote', () => {
+		const start = fromCsv('id;label;amount\nh1;Livret;100\n', {
+			generatedAt: STAMP,
+			baseCurrency: 'EUR'
+		});
+		expect(() =>
+			mergeCsv(start, 'id;label;amount\nh1;Compte titres;900\n', {
+				generatedAt: STAMP,
+				baseCurrency: 'EUR'
+			})
+		).toThrow('names another holding');
+	});
 });

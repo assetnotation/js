@@ -341,7 +341,8 @@ const BLANK_DEFAULTS = ['kind', 'nature'] as const;
 
 /**
  * `fromCsv`, plus, for each holding in order, the defaulted fields whose cell
- * was EMPTY: a merge must not read `nature` left blank as a stated `asset`.
+ * was EMPTY: a merge must not read `nature` left blank as a stated `asset`,
+ * nor an `id` the reader minted as one the sheet wrote.
  */
 export function readCsv(
 	text: string,
@@ -416,7 +417,8 @@ export function readCsv(
 			holding.institutionId = instId;
 		}
 		holdings.push(holding);
-		blank.push(new Set(BLANK_DEFAULTS.filter((field) => at(row, field) === '')));
+		// `id` too: a minted `h1` is not a row naming the holding `h1`.
+		blank.push(new Set([...BLANK_DEFAULTS, 'id'].filter((field) => at(row, field) === '')));
 
 		// The format carries a debt as what is owed, zero or more, and the net
 		// worth subtracts it: a negative one would raise the total. Reading its

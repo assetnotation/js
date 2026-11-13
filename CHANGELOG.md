@@ -7,6 +7,10 @@
 - `mergeCsv` keeps the currency of an existing holding when its `currency`
   cell is empty. The empty cell took the fallback currency, so a USD account
   became EUR and its new valuation with it, with no conversion and no error.
+- `mergeCsv` matches a holding by id only when the sheet wrote that id. A row
+  with no id and no label put its amount on whatever holding was `h1`, the id
+  the reader mints for it; and a real `h1` written in the first row was taken
+  for a minted one.
 - The MCP server writes a document reached through a symbolic link at the
   link's target. It renamed over the link itself, so the target kept the old
   figures while the tool reported a success.
