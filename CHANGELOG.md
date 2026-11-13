@@ -4,6 +4,13 @@
 
 ### Fixed
 
+- `mergeCsv` keeps two rows the sheet gave two ids apart, under the same
+  label. The second was matched to the first by its label, and its amount
+  became the history of one account: 100 and 200 read as a total of 200.
+- `nextId` (and so `upsertHolding` without an id) never mints an id another
+  entity already points at. A partial document whose valuation named `h1`
+  handed that money to the first holding created after it.
+
 - `mergeCsv` keeps the currency of an existing holding when its `currency`
   cell is empty. The empty cell took the fallback currency, so a USD account
   became EUR and its new valuation with it, with no conversion and no error.
