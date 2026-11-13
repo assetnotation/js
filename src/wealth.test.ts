@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { mergeCsv, upsertHolding } from './wealth.js';
+import { mergeCsv, netWorth, upsertHolding } from './wealth.js';
 
 type AssetNotationDocument = Parameters<typeof upsertHolding>[0];
 
@@ -68,5 +68,28 @@ describe('ids already in use', () => {
 			['compte-a', '100'],
 			['compte-b', '200']
 		]);
+	});
+});
+
+describe('netWorth on a large portfolio', () => {
+	it('adds 20 000 accounts in one currency without copying the list each time', () => {
+		const n = 20_000;
+		const holdings = Array.from({ length: n }, (_, i) => ({
+			id: `h${i}`,
+			kind: 'other',
+			nature: 'asset'
+		}));
+		const valuations = holdings.map((h, i) => ({
+			id: `v${i}`,
+			holdingId: h.id,
+			asOf: '2026-01-01',
+			value: { amount: '1', currency: 'EUR' }
+		}));
+		const doc = { holdings, valuations } as unknown as AssetNotationDocument;
+		const started = performance.now();
+		const net = netWorth(doc);
+		// Measured on 2026-11-13: 41 ms in place, 1 202 ms when each holding copied the list.
+		expect(performance.now() - started).toBeLessThan(500);
+		expect(net.byCurrency[0].net).toMatch(/^20000(\.0+)?$/);
 	});
 });

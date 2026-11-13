@@ -252,7 +252,11 @@ export function netWorth(doc: AssetNotationDocument): NetWorth {
 		const currency =
 			text((value as Entity).currency) ?? text(h.currency) ?? text(doc.baseCurrency) ?? '';
 		const bucket = h.nature === 'liability' ? liabilities : assets;
-		bucket.set(currency, [...(bucket.get(currency) ?? []), amount]);
+		// In place: copying the list on every holding made a large one-currency
+		// portfolio quadratic on a synchronous call.
+		const amounts = bucket.get(currency);
+		if (amounts) amounts.push(amount);
+		else bucket.set(currency, [amount]);
 		if (oldest === undefined || Date.parse(String(v.asOf)) < Date.parse(String(oldest.asOf)))
 			oldest = v;
 	}
