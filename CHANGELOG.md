@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.1.16] - 2026-11-13
+
 ### Added
 
 - `fromCsv` takes a `dateOrder` option, `day-first` or `month-first`, for a
