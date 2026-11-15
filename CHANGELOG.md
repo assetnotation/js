@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.1.17] - 2026-11-15
+
 ### Fixed
 
 - The CSV keeps the hierarchy. `toCsv` dropped `parentId`, so an account of
