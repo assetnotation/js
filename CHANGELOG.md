@@ -4,6 +4,11 @@
 
 ### Fixed
 
+- The CSV keeps the hierarchy. `toCsv` dropped `parentId`, so an account of
+  100 000 EUR holding positions of 60 000 and 40 000 came back as three roots
+  and a net worth of 200 000. A `parentId` column is written last, read when
+  present, and `mergeCsv` points it at the holding its row landed on. A file
+  without the column reads as before.
 - `netWorth` adds each amount to its currency in place. It copied the whole
   list for every holding, so a portfolio of 20 000 accounts in one currency
   spent about three seconds in that loop alone.

@@ -535,6 +535,30 @@ describe('writing a spreadsheet', () => {
 });
 
 describe('what an audit found the reader getting wrong', () => {
+	const NESTED =
+		'id;label;amount;parentId\na1;Compte titres;100000;\np1;Fonds A;60000;a1\np2;Fonds B;40000;a1\n';
+
+	it('keeps an account and its positions nested through a round trip', () => {
+		const doc = fromCsv(NESTED, { generatedAt: STAMP, baseCurrency: 'EUR' });
+		const back = fromCsv(toCsv(doc), { generatedAt: STAMP, baseCurrency: 'EUR' });
+		expect(validate(back).valid).toBe(true);
+		expect(netWorth(back).byCurrency[0].net).toBe('100000');
+		const parents = (back.holdings as Record<string, unknown>[]).map((h) => h.parentId);
+		expect(parents).toEqual([undefined, 'a1', 'a1']);
+	});
+
+	it('points a merged parent at the holding its row landed on', () => {
+		const start = fromCsv('id;label;amount\nk7;Compte titres;90000\n', {
+			generatedAt: STAMP,
+			baseCurrency: 'EUR'
+		});
+		const { doc } = mergeCsv(start, NESTED, { generatedAt: STAMP, baseCurrency: 'EUR' });
+		const holdings = doc.holdings as Record<string, unknown>[];
+		expect(holdings.find((h) => h.id === 'a1')).toBeUndefined();
+		expect(holdings.find((h) => h.label === 'Fonds A')?.parentId).toBe('k7');
+		expect(netWorth(doc).byCurrency[0].net).toBe('100000');
+	});
+
 	it('reads a file whose headings are quoted, with no delimiter given', () => {
 		const doc = fromCsv('"label","amount"\n"Réserve","100"\n', { generatedAt: STAMP });
 		const v = (doc.valuations as Record<string, unknown>[])[0];

@@ -30,7 +30,11 @@ export const COLUMNS = [
 	'institution',
 	'amount',
 	'asOf',
-	'source'
+	'source',
+	// Last, so the columns before it keep the place they always had. Without it
+	// an account and its positions came back as roots and the net worth counted
+	// the account twice.
+	'parentId'
 ] as const;
 
 export interface CsvOptions {
@@ -289,7 +293,8 @@ export function toCsv(doc: AssetNotationDocument, options: CsvOptions = {}): str
 			asText(institutions.get(String(h.institutionId ?? '')) ?? ''),
 			String(value.amount ?? ''),
 			String(v?.asOf ?? ''),
-			asText(String(v?.source ?? ''))
+			asText(String(v?.source ?? '')),
+			asText(String(h.parentId ?? ''))
 		];
 		lines.push(row.map((f) => quote(f, delimiter)).join(delimiter));
 	}
@@ -406,6 +411,8 @@ export function readCsv(
 			currency
 		};
 		if (label !== '') holding.label = label;
+		const parentId = at(row, 'parentid');
+		if (parentId !== '') holding.parentId = parentId;
 
 		const name = at(row, 'institution');
 		if (name !== '') {

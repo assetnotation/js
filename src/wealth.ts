@@ -357,6 +357,7 @@ export function mergeCsv(
 		holdingIds.set(String(h.id), String(result.holding.id));
 		if (idGiven) named.add(String(result.holding.id));
 	}
+	next = reparent(next, entities(imported, 'holdings'), holdingIds);
 
 	let valuations = 0;
 	for (const [index, v] of entities(imported, 'valuations').entries()) {
@@ -377,6 +378,24 @@ export function mergeCsv(
 		valuations++;
 	}
 	return { doc: next, holdingIds: [...new Set(holdingIds.values())], valuations };
+}
+
+/**
+ * A parent the sheet names by ITS id, pointed at the holding that id landed on:
+ * a merge may file a row under another id, and the link must follow it.
+ */
+function reparent(
+	doc: AssetNotationDocument,
+	imported: readonly Entity[],
+	holdingIds: ReadonlyMap<string, string>
+): AssetNotationDocument {
+	let next = doc;
+	for (const h of imported) {
+		if (typeof h.parentId !== 'string') continue;
+		const id = holdingIds.get(String(h.id)) ?? String(h.id);
+		next = upsertHolding(next, { id, parentId: holdingIds.get(h.parentId) ?? h.parentId }).doc;
+	}
+	return next;
 }
 
 /** ISO 4217 for "no currency": what a row that names none is read as. */
